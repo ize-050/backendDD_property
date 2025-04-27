@@ -38,6 +38,24 @@ enum Role {
   AGENT
 }
 
+// Zone model - สำหรับโซน/ย่านต่างๆ
+model Zone {
+  id                Int                 @id @default(autoincrement())
+  name              String              @unique // ชื่อโซน เช่น Jomtien, Pratumnak
+  nameEn            String              @map("name_en") // ชื่อภาษาอังกฤษ
+  nameTh            String?             @map("name_th") // ชื่อภาษาไทย
+  description       String?             @db.Text // คำอธิบาย
+  city              String              // เมือง เช่น Pattaya
+  province          String              // จังหวัด เช่น Chonburi
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  
+  // ความสัมพันธ์กับ Property
+  properties        Property[]
+  
+  @@map("zones")
+}
+
 // Property model - หลักการคือ Property เป็นข้อมูลหลักของอสังหาริมทรัพย์
 model Property {
   id                Int                 @id @default(autoincrement())
@@ -53,6 +71,10 @@ model Property {
   zipCode           String?             @map("zip_code") // รหัสไปรษณีย์
   latitude          Float?              @map("lat") // พิกัด Latitude
   longitude         Float?              @map("lng") // พิกัด Longitude
+  
+  // ความสัมพันธ์กับ Zone
+  zoneId            Int?                @map("zone_id")
+  zone              Zone?               @relation(fields: [zoneId], references: [id])
   
   // ข้อมูลพื้นที่ - สำหรับทุกประเภททรัพย์สิน
   area              Float               // พื้นที่ (ตร.ม.)

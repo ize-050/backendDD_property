@@ -35,6 +35,105 @@ async function main() {
   });
 
   console.log(`Created users: ${admin.id}, ${agent.id}`);
+  
+  // สร้างข้อมูล Zone สำหรับพัทยา
+  const pattayaZones = [
+    {
+      name: 'Jomtien',
+      nameEn: 'Jomtien',
+      nameTh: 'จอมเทียน',
+      description: 'Jomtien Beach is a popular tourist destination located on the east coast of the Gulf of Thailand about 165 km south-east of Bangkok.',
+      city: 'Pattaya',
+      province: 'Chonburi'
+    },
+    {
+      name: 'Pratumnak',
+      nameEn: 'Pratumnak',
+      nameTh: 'พระตำหนัก',
+      description: 'Pratumnak Hill is the area between Pattaya and Jomtien Beach, known for its upscale residential properties.',
+      city: 'Pattaya',
+      province: 'Chonburi'
+    },
+    {
+      name: 'Naklua',
+      nameEn: 'Naklua',
+      nameTh: 'นาเกลือ',
+      description: 'Naklua is a more traditional Thai area north of Pattaya Beach, known for its seafood restaurants and local markets.',
+      city: 'Pattaya',
+      province: 'Chonburi'
+    },
+    {
+      name: 'Central Pattaya',
+      nameEn: 'Central Pattaya',
+      nameTh: 'พัทยากลาง',
+      description: 'The heart of Pattaya city, known for its shopping malls, restaurants, and nightlife.',
+      city: 'Pattaya',
+      province: 'Chonburi'
+    },
+    {
+      name: 'East Pattaya',
+      nameEn: 'East Pattaya',
+      nameTh: 'พัทยาตะวันออก',
+      description: 'A rapidly developing area with many housing developments and golf courses.',
+      city: 'Pattaya',
+      province: 'Chonburi'
+    }
+  ];
+  
+  // สร้างข้อมูล Zone สำหรับกรุงเทพฯ
+  const bangkokZones = [
+    {
+      name: 'Sukhumvit',
+      nameEn: 'Sukhumvit',
+      nameTh: 'สุขุมวิท',
+      description: 'One of Bangkok\'s main commercial and residential areas, popular with expats and tourists.',
+      city: 'Bangkok',
+      province: 'Bangkok'
+    },
+    {
+      name: 'Silom',
+      nameEn: 'Silom',
+      nameTh: 'สีลม',
+      description: 'Bangkok\'s financial district with many office buildings, hotels, and nightlife venues.',
+      city: 'Bangkok',
+      province: 'Bangkok'
+    },
+    {
+      name: 'Sathorn',
+      nameEn: 'Sathorn',
+      nameTh: 'สาทร',
+      description: 'A business district with many embassies, luxury condominiums, and hotels.',
+      city: 'Bangkok',
+      province: 'Bangkok'
+    },
+    {
+      name: 'Thonglor',
+      nameEn: 'Thonglor',
+      nameTh: 'ทองหล่อ',
+      description: 'An upscale area known for its trendy restaurants, cafes, and nightlife.',
+      city: 'Bangkok',
+      province: 'Bangkok'
+    },
+    {
+      name: 'Asoke',
+      nameEn: 'Asoke',
+      nameTh: 'อโศก',
+      description: 'A central business area with many shopping malls and office buildings.',
+      city: 'Bangkok',
+      province: 'Bangkok'
+    }
+  ];
+  
+  // บันทึกข้อมูล Zone ลงในฐานข้อมูล
+  for (const zoneData of [...pattayaZones, ...bangkokZones]) {
+    await prisma.zone.upsert({
+      where: { name: zoneData.name },
+      update: zoneData,
+      create: zoneData,
+    });
+  }
+  
+  console.log(`Created zones: ${pattayaZones.length + bangkokZones.length} zones`);
 
   // สร้างข้อมูลบ้านในพัทยา 5 ชุด
   const houses = [
@@ -336,8 +435,10 @@ async function main() {
 
   // เพิ่มข้อมูลบ้าน
   for (const house of houses) {
-    const property = await prisma.property.create({
-      data: house
+    const property = await prisma.property.upsert({
+      where: { propertyCode: house.propertyCode },
+      update: house,
+      create: house
     });
 
     // เพิ่มข้อมูลการฝากขาย
@@ -407,8 +508,10 @@ async function main() {
 
   // เพิ่มข้อมูลโรงแรม
   for (const hotel of hotels) {
-    const property = await prisma.property.create({
-      data: hotel
+    const property = await prisma.property.upsert({
+      where: { propertyCode: hotel.propertyCode },
+      update: hotel,
+      create: hotel
     });
 
     // เพิ่มข้อมูลการฝากขาย

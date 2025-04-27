@@ -25,16 +25,16 @@ class PropertyRepository {
 
     // Calculate pagination
     const skip = (page - 1) * limit;
-    
+
     // Build filter conditions
     const where = { status };
-    
+
     if (propertyType) where.propertyType = propertyType;
     if (listingType) where.listingType = listingType;
     if (city) where.city = city;
     if (bedrooms) where.bedrooms = Number(bedrooms);
     if (bathrooms) where.bathrooms = Number(bathrooms);
-    
+
     // Price range
     if (minPrice || maxPrice) {
       where.price = {};
@@ -110,7 +110,8 @@ class PropertyRepository {
    * Create new property
    */
   async create(data) {
-    return prisma.property.create({ด
+    return prisma.property.create({
+
       data: {
         title: data.title,
         description: data.description,
@@ -224,53 +225,33 @@ class PropertyRepository {
       where: { id: Number(featureId) },
     });
   }
-  
- 
-/**
- * Get random properties
- * @param {number} count - Number of properties to return
- * @returns {Promise<Array>} - Random properties
- */
-async getRandomProperties(count = 4) {
-  try {
-    // Get properties with their images and listings
-    const properties = await prisma.property.findMany({
-      take: count,
-      orderBy: {
-        // Use random ordering
-        id: 'asc',
-      },
-      include: {
-        images: {
-          where: {
-            isFeatured: true,
-          },
-          take: 1,
-        },
-        listings: {
-          where: {
-            status: 'ACTIVE',
-          },
-          take: 1,
-        },
-        highlights: true,
-        amenities: true,
-        views: true,
-      },
-    });
 
-    // If we don't have enough properties, try again without filtering
-    if (properties.length < count) {
-      return await prisma.property.findMany({
-        take: count,
+
+  /**
+   * Get random properties
+   * @param {number} count - Number of properties to return
+   * @returns {Promise<Array>} - Random properties
+   */
+  async getRandomProperties(count = 4) {
+    try {
+      // Get properties with their images and listings
+      const properties = await prisma.property.findMany({
+        take: Number(count),
         orderBy: {
+          // Use random ordering
           id: 'asc',
         },
         include: {
           images: {
+            where: {
+              isFeatured: true,
+            },
             take: 1,
           },
           listings: {
+            where: {
+              status: 'ACTIVE',
+            },
             take: 1,
           },
           highlights: true,
@@ -278,14 +259,34 @@ async getRandomProperties(count = 4) {
           views: true,
         },
       });
-    }
 
-    return properties;
-  } catch (error) {
-    console.error('Error in getRandomProperties:', error);
-    throw error;
+      // If we don't have enough properties, try again without filtering
+      if (properties.length < count) {
+        return await prisma.property.findMany({
+          take: count,
+          orderBy: {
+            id: 'asc',
+          },
+          include: {
+            images: {
+              take: 1,
+            },
+            listings: {
+              take: 1,
+            },
+            highlights: true,
+            amenities: true,
+            views: true,
+          },
+        });
+      }
+
+      return properties;
+    } catch (error) {
+      console.error('Error in getRandomProperties:', error);
+      throw error;
+    }
   }
-}
 
 }
 

@@ -11,11 +11,35 @@ const logger = require('./utils/logger');
 const app = express();
 
 // Apply middlewares
-app.use(helmet()); // Security headers
-app.use(cors()); // Enable CORS
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+})); // Security headers with cross-origin resource policy
+
+// ตั้งค่า CORS ให้อนุญาตการเข้าถึงจากทุก origin
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
+}));
+
 app.use(express.json()); // Parse JSON request body
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded request body
 app.use(morgan('dev')); // HTTP request logger
+
+// Serve static files from the public directory with CORS headers
+app.use('/static', express.static('public', {
+  setHeaders: (res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+  }
+}));
+
+app.use('/images', express.static('public/images', {
+  setHeaders: (res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+  }
+}));
 
 // API routes
 app.use('/api', routes);
