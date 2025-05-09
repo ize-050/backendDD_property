@@ -20,14 +20,18 @@ class PropertyRepository {
       bedrooms,
       bathrooms,
       city,
-      status = 'ACTIVE',
+      zoneId,
+      // status = 'ACTIVE',
     } = options;
 
     // Calculate pagination
     const skip = (page - 1) * limit;
 
     // Build filter conditions
-    const where = { status };
+    const where = {
+      listings: {
+      },
+    }
 
     if (propertyType) where.propertyType = propertyType;
     if (listingType) where.listingType = listingType;
@@ -37,11 +41,14 @@ class PropertyRepository {
 
     // Price range
     if (minPrice || maxPrice) {
-      where.price = {};
-      if (minPrice) where.price.gte = Number(minPrice);
-      if (maxPrice) where.price.lte = Number(maxPrice);
+      where.listings = {
+        some: {}
+      };
+      if (minPrice) where.listings.some.price = { ...where.listings.some.price, gte: Number(minPrice) };
+      if (maxPrice) where.listings.some.price = { ...where.listings.some.price, lte: Number(maxPrice) };
     }
 
+    if(zoneId) where.zoneId = Number(zoneId);
     // Execute query
     const [properties, total] = await Promise.all([
       prisma.property.findMany({
@@ -56,6 +63,11 @@ class PropertyRepository {
               id: true,
               name: true,
               email: true,
+            },
+          },
+          listings: {
+            where: {
+              status: 'ACTIVE',
             },
           },
         },
@@ -95,6 +107,7 @@ class PropertyRepository {
       include: {
         images: true,
         features: true,
+        listings: true,
         user: {
           select: {
             id: true,

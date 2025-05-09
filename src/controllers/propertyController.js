@@ -39,6 +39,38 @@ class PropertyController {
   }
 
   /**
+   * Get all property types
+   * @route GET /api/properties/types
+   */
+  async getPropertyTypes(req, res, next) {
+    try {
+      const propertyTypes = await propertyService.getPropertyTypes();
+      res.status(200).json({
+        status: 'success',
+        data: propertyTypes,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+  
+  /**
+   * Get property types with price statistics and counts
+   * @route GET /api/properties/price-types
+   */
+  async getPropertyPriceTypes(req, res, next) {
+    try {
+      const propertyPriceTypes = await propertyService.getPropertyPriceTypes();
+      res.status(200).json({
+        status: 'success',
+        data: propertyPriceTypes,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Get property by ID
    * @route GET /api/properties/:id
    */
@@ -93,7 +125,7 @@ class PropertyController {
         req.body,
         req.user.id
       );
-      
+
       res.status(200).json({
         status: 'success',
         data: property,
@@ -136,7 +168,7 @@ class PropertyController {
         req.body,
         req.user.id
       );
-      
+
       res.status(201).json({
         status: 'success',
         data: image,
@@ -179,7 +211,7 @@ class PropertyController {
         req.body,
         req.user.id
       );
-      
+
       res.status(201).json({
         status: 'success',
         data: feature,
