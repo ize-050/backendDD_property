@@ -193,6 +193,23 @@ class PropertyController {
       next(error);
     }
   }
+  
+  /**
+   * Get properties for the authenticated user with pagination, search, and sorting
+   * @route GET /api/properties/my-properties
+   */
+  async getUserProperties(req, res, next) {
+    try {
+      console.log("query", req.query)
+      const result = await propertyService.getUserProperties(req.user.userId, req.query);
+      res.status(200).json({
+        status: 'success',
+        ...result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 
   /**
    * Add property feature

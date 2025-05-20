@@ -1,9 +1,17 @@
-const prisma = require('../utils/prisma');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
+
 
 /**
  * Property Repository - Handles database operations for properties
  */
 class PropertyRepository {
+
+  constructor() {
+    this.prisma = new PrismaClient();
+  }
+
   /**
    * Find all properties with pagination and filtering
    */
@@ -21,6 +29,8 @@ class PropertyRepository {
       bathrooms,
       city,
       zoneId,
+      search,
+      userId,
       // status = 'ACTIVE',
     } = options;
 
@@ -31,6 +41,21 @@ class PropertyRepository {
     const where = {
       listings: {
       },
+    }
+
+    // Add search by title or description
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { address: { contains: search, mode: 'insensitive' } },
+        { city: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+
+    // Filter by user ID if provided
+    if (userId) {
+      where.userId = Number(userId);
     }
 
     if (propertyType) where.propertyType = propertyType;
@@ -48,7 +73,7 @@ class PropertyRepository {
       if (maxPrice) where.listings.some.price = { ...where.listings.some.price, lte: Number(maxPrice) };
     }
 
-    if(zoneId) where.zoneId = Number(zoneId);
+    if (zoneId) where.zoneId = Number(zoneId);
     // Execute query
     const [properties, total] = await Promise.all([
       prisma.property.findMany({
@@ -300,6 +325,94 @@ class PropertyRepository {
       throw error;
     }
   }
+
+
+
+  async findByUserId(userId, options = {}) {
+    const {
+      page = 1,
+      limit = 10,
+      search = '',
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = options;
+
+    // Calculate pagination
+    const skip = (page - 1) * limit;
+
+    // Build filter conditions
+    const where = {
+      userId: Number(userId),
+    };
+
+    // Add search filter if provided
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { address: { contains: search, mode: 'insensitive' } },
+        { city: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+
+    // Execute query
+    const [properties, total] = await Promise.all([
+      prisma.property.findMany({
+        where,
+        include: {
+          images: true,
+          listings: true,
+          // Include view and inquiry counts
+          _count: {
+            select: {
+              views: true,
+              
+            },
+          },
+        },
+        orderBy: {
+          [sortBy]: sortOrder,
+        },
+        skip,
+        take: Number(limit),
+      }),
+      prisma.property.count({ where }),
+    ]);
+
+    // Process properties to include view and inquiry counts
+    const processedProperties = properties.map(property => ({
+      ...property,
+      viewCount: property._count?.views || 0,
+      inquiryCount: property._count?.inquiries || 0,
+      // Format the date
+      formattedDate: property.createdAt ? new Date(property.createdAt).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      }) : 'N/A',
+      // Get the featured image
+      featuredImage: property.images && property.images.length > 0
+        ? property.images.find(img => img.isFeatured) || property.images[0]
+        : null,
+    }));
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(total / limit);
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+
+    return {
+      properties: processedProperties,
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      totalPages,
+      hasNext,
+      hasPrev,
+    };
+  };
+
+
 
 }
 

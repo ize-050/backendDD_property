@@ -3,7 +3,7 @@ const propertyRoutes = require('./propertyRoutes');
 const zoneRoutes = require('./zoneRoutes');
 const searchRoutes = require('./searchRoutes');
 // const userRoutes = require('./userRoutes');
-// const authRoutes = require('./authRoutes');
+const authRoutes = require('./authRoutes');
 
 const router = express.Router();
 
@@ -12,7 +12,7 @@ router.use('/properties', propertyRoutes);
 router.use('/zones', zoneRoutes);
 router.use('/search', searchRoutes);
 // router.use('/users', userRoutes);
-// router.use('/auth', authRoutes);
+router.use('/auth', authRoutes);
 
 // API documentation route
 router.get('/', (req, res) => {

@@ -416,6 +416,26 @@ class PropertyService {
     
     return descriptionMapping[type] || '';
   }
+  /**
+   * Get properties for a specific user with pagination, search, and sorting
+   * @param {number} userId - User ID
+   * @param {Object} queryParams - Query parameters for pagination, search, and sorting
+   * @returns {Promise<Object>} - Properties with pagination metadata
+   */
+  async getUserProperties(userId, queryParams) {
+    try {
+      if (!userId) {
+        throw new ApiError(400, 'User ID is required');
+      }
+      
+      const properties = await propertyRepository.findByUserId(userId, queryParams);
+      console.log(properties);
+      return properties;
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new ApiError(500, 'Error fetching user properties', false, error.stack);
+    }
+  }
 }
 
 module.exports = new PropertyService();
