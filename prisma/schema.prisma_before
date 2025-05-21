@@ -45,7 +45,7 @@ model Zone {
   nameEn            String              @map("name_en") // ชื่อภาษาอังกฤษ
   nameTh            String?             @map("name_th") // ชื่อภาษาไทย
   description       String?             @db.Text // คำอธิบาย
-  city              String?             // เมือง เช่น Pattaya
+  city              String              // เมือง เช่น Pattaya
   province          String              // จังหวัด เช่น Chonburi
   createdAt         DateTime            @default(now()) @map("created_at")
   updatedAt         DateTime            @updatedAt @map("updated_at")
@@ -59,19 +59,16 @@ model Zone {
 // Property model - หลักการคือ Property เป็นข้อมูลหลักของอสังหาริมทรัพย์
 model Property {
   id                Int                 @id @default(autoincrement())
-  title             String              // ชื่อประกาศ (propertyTitle จาก formData)
   projectName       String              @map("project_name") // ชื่อโครงการ
   propertyCode      String?             @unique @map("property_code") // รหัสทรัพย์ (auto generate)
-  referenceId       String?             @map("reference_id") // รหัสอ้างอิง
   propertyType      PropertyType        @map("property_type") // ประเภทอสังหาริมทรัพย์ (คอนโด, บ้านเดี่ยว, ทาวน์เฮาส์, ฯลฯ)
   address           String              @db.Text // ที่อยู่
-  searchAddress     String?             @db.Text @map("search_address") // ที่อยู่สำหรับค้นหา
-  district          String              // เขต/อำเภอ
-  subdistrict       String              @map("subdistrict") // แขวง/ตำบล
+  searchAddress     String              @db.Text @map("search_address") // ที่อยู่สำหรับค้นหา
+  district          String?             // เขต/อำเภอ
   province          String              // จังหวัด
   city              String?             // เมือง
   country           String              @default("Thailand")
-  zipCode           String              @map("zip_code") // รหัสไปรษณีย์
+  zipCode           String?             @map("zip_code") // รหัสไปรษณีย์
   latitude          Float?              @map("lat") // พิกัด Latitude
   longitude         Float?              @map("lng") // พิกัด Longitude
   
@@ -93,7 +90,6 @@ model Property {
   landGrade         LandGrade?          @map("land_grade") // เกรดที่ดิน
   landAccess        LandAccess?         @map("land_access") // การเข้าถึงที่ดิน
   ownershipType     OwnershipType?      @map("ownership_type") // ประเภทกรรมสิทธิ์
-  ownershipQuota    String?             @map("ownership_quota") // สัดส่วนกรรมสิทธิ์
   
   // ข้อมูลบ้าน/คอนโด - สำหรับบ้านและคอนโด
   bedrooms          Int?                // จำนวนห้องนอน
@@ -105,19 +101,8 @@ model Property {
   buildingUnit      String?             @map("building_unit") // อาคาร/ยูนิต (สำหรับคอนโด)
   floor             Int?                // ชั้นที่ (สำหรับคอนโด)
   
-  // ข้อมูลหลายภาษา
-  description       String              @db.Text // คำอธิบายภาษาอังกฤษ
-  translatedTitles  Json?               @map("translated_titles") // หัวข้อในหลายภาษา (JSON format: {"th": "...", "zh": "...", "ru": "..."})
-  translatedDescriptions Json?          @map("translated_descriptions") // คำอธิบายในหลายภาษา (JSON format: {"th": "...", "zh": "...", "ru": "..."})
+  description       Json                // คำอธิบายในหลายภาษา (JSON format: {"en": "...", "th": "...", "zh": "...", "ru": "..."})
   paymentPlan       String?             @db.Text @map("payment_plan") // แผนการชำระเงิน
-  translatedPaymentPlans Json?          @map("translated_payment_plans") // แผนการชำระเงินในหลายภาษา
-  
-  // ข้อมูลติดต่อและโซเชียลมีเดีย
-  socialMedia       Json?               @map("social_media") // ข้อมูลโซเชียลมีเดีย (JSON format: {"youtubeUrl": "...", "tiktokUrl": "..."})
-  contactInfo       Json?               @map("contact_info") // ข้อมูลติดต่อ (JSON format: {"phone": "...", "email": "...", "lineId": "..."})
-  
-  // ข้อมูลเพิ่มเติม
-  status            String              @default("ACTIVE") // สถานะทรัพย์สิน
   createdAt         DateTime            @default(now()) @map("created_at")
   updatedAt         DateTime            @updatedAt @map("updated_at")
   userId            Int                 @map("user_id") // ผู้สร้างข้อมูล
@@ -350,13 +335,6 @@ enum AmenityType {
   WASHING_MACHINE
   WATER_HEATER
   WIFI
-  BALCONY
-  GARDEN
-  PARKING
-  POOL
-  SECURITY
-  FITNESS
-  PET_FRIENDLY
 }
 
 // Property Facility model - สิ่งอำนวยความสะดวกส่วนกลาง
@@ -377,7 +355,6 @@ enum FacilityCategory {
   COMMON_AREAS
   POOLS_SPA_RELAXATION
   DINING_ENTERTAINMENT_LEISURE
-  OTHER
 }
 
 enum FacilityType {
@@ -416,14 +393,6 @@ enum FacilityType {
   POOL_TABLE
   RESTAURANT
   SKY_BAR
-  
-  // Other
-  SECURITY_24HR
-  CCTV
-  CONCIERGE_SERVICES
-  EV_CHARGER
-  HIGH_SPEED_LIFT
-  KIDS_CLUB
 }
 
 // Property View model - วิวของทรัพย์สิน
@@ -460,20 +429,12 @@ model PropertyHighlight {
 }
 
 enum HighlightType {
-  // Room Types
-  DUPLEX
-  PENTHOUSE
-  ONE_BED_PLUS
-  DUPLEX_PENTHOUSE
-  
-  // Highlights
   BRAND_NEW_PROPERTY
   PETS_ALLOWED
   COMPANY_REGISTRATION
   RENT_TO_OWN
   NPA_ASSETS
   FOREIGNER_QUOTA
-  SALE_DOWN
 }
 
 // Property Label model - ป้ายกำกับทรัพย์สิน
@@ -524,14 +485,53 @@ enum NearbyType {
   NEAR_SCHOOL
 }
 
-// Contact model - สำหรับการติดต่อจากผู้สนใจ
+// Other facilities model - สิ่งอำนวยความสะดวกอื่นๆ
+model OtherFacility {
+  id                Int                 @id @default(autoincrement())
+  facilityType      OtherFacilityType
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  
+  @@map("other_facilities")
+}
+
+enum OtherFacilityType {
+  SECURITY_24HR
+  CCTV
+  CONCIERGE_SERVICES
+  EV_CHARGER
+  HIGH_SPEED_LIFT
+  KIDS_CLUB
+}
+
+// Room Type model - ประเภทห้อง
+model RoomType {
+  id                Int                 @id @default(autoincrement())
+  name              String
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  
+  @@map("room_types")
+}
+
+// Settings model for website configuration
+model Setting {
+  id                Int                 @id @default(autoincrement())
+  key               String              @unique
+  value             String              @db.Text
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  
+  @@map("settings")
+}
+
+// Contact messages from website
 model Contact {
   id                Int                 @id @default(autoincrement())
   name              String
   email             String
   phone             String?
   message           String              @db.Text
-  propertyId        Int?                @map("property_id")
   status            ContactStatus       @default(NEW)
   createdAt         DateTime            @default(now()) @map("created_at")
   updatedAt         DateTime            @updatedAt @map("updated_at")

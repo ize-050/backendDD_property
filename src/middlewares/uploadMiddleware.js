@@ -1,0 +1,150 @@
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const { ApiError } = require('./errorHandler');
+
+// Define storage for uploaded files
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    // Create directory if it doesn't exist
+    const propertyId = req.params.id || 'temp';
+    let uploadDir;
+    
+    // Determine upload directory based on field name
+    if (file.fieldname === 'floorPlanImages') {
+      uploadDir = path.join(__dirname, '../../public/images/properties', propertyId.toString(), 'floor-plans');
+    } else if (file.fieldname === 'unitPlanImages') {
+      uploadDir = path.join(__dirname, '../../public/images/properties', propertyId.toString(), 'unit-plans');
+    } else {
+      // Default for property images
+      uploadDir = path.join(__dirname, '../../public/images/properties', propertyId.toString());
+    }
+    
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    // Generate unique filename
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+  }
+});
+
+// File filter to only allow image files
+const fileFilter = (req, file, cb) => {
+  // Accept only image files
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new ApiError(400, 'Only image files are allowed'), false);
+  }
+};
+
+// Create multer upload instance
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max file size
+    files: 30 // Max 30 files per request
+  }
+});
+
+// Middleware for handling property images upload
+const uploadFields = upload.fields([
+  { name: 'images', maxCount: 10 },
+  { name: 'floorPlanImages', maxCount: 10 },
+  { name: 'unitPlanImages', maxCount: 10 }
+]);
+
+// Middleware for handling form data with images
+const handlePropertyFormData = (req, res, next) => {
+  uploadFields(req, res, function (err) {
+    if (err instanceof multer.MulterError) {
+      // A Multer error occurred when uploading
+      return next(new ApiError(400, `Upload error: ${err.message}`));
+    } else if (err) {
+      // An unknown error occurred
+      return next(err);
+    }
+    
+    // Process property images
+    if (req.files && req.files.images && req.files.images.length > 0) {
+      // Create image data array
+      const images = req.files.images.map((file, index) => {
+        return {
+          url: `/images/properties/${req.params.id || 'temp'}/${file.filename}`,
+          isFeatured: index === 0, // First image is featured
+          sortOrder: index
+        };
+      });
+      
+      // Add images to request body
+      req.body.images = images;
+    }
+    
+    // Process floor plan images
+    if (req.files && req.files.floorPlanImages && req.files.floorPlanImages.length > 0) {
+      // Create floor plan data array
+      const floorPlans = req.files.floorPlanImages.map((file, index) => {
+        return {
+          url: `/images/properties/${req.params.id || 'temp'}/floor-plans/${file.filename}`,
+          title: `Floor Plan ${index + 1}`,
+          sortOrder: index
+        };
+      });
+      
+      // Add floor plans to request body
+      req.body.floorPlans = floorPlans;
+    }
+    
+    // Process unit plan images
+    if (req.files && req.files.unitPlanImages && req.files.unitPlanImages.length > 0) {
+      // Create unit plan data array
+      const unitPlans = req.files.unitPlanImages.map((file, index) => {
+        return {
+          url: `/images/properties/${req.params.id || 'temp'}/unit-plans/${file.filename}`,
+          title: `Unit Plan ${index + 1}`,
+          sortOrder: index
+        };
+      });
+      
+      // Add unit plans to request body
+      req.body.unitPlans = unitPlans;
+    }
+    
+    // Continue with the next middleware
+    next();
+  });
+};
+
+// Single image upload for updating specific images
+const uploadSingleImage = upload.single('image');
+
+// Middleware for handling single image upload
+const handleSingleImageUpload = (req, res, next) => {
+  uploadSingleImage(req, res, function (err) {
+    if (err instanceof multer.MulterError) {
+      return next(new ApiError(400, `Upload error: ${err.message}`));
+    } else if (err) {
+      return next(err);
+    }
+    
+    if (req.file) {
+      req.body.imageUrl = `/images/properties/${req.params.id || 'temp'}/${req.file.filename}`;
+    }
+    
+    next();
+  });
+};
+
+module.exports = {
+  uploadFields,
+  handlePropertyFormData,
+  uploadSingleImage,
+  handleSingleImageUpload
+};

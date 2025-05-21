@@ -4,10 +4,11 @@ const logger = require('../utils/logger');
  * Custom error class for API errors
  */
 class ApiError extends Error {
-  constructor(statusCode, message, isOperational = true, stack = '') {
+  constructor(statusCode, message, isOperational = true, stack = '', errors = null) {
     super(message);
     this.statusCode = statusCode;
     this.isOperational = isOperational;
+    this.errors = errors; // เพิ่มฟิลด์ errors สำหรับเก็บ validation errors
     if (stack) {
       this.stack = stack;
     } else {
@@ -39,6 +40,7 @@ const errorHandler = (err, req, res, next) => {
     status: 'error',
     statusCode,
     message,
+    ...(err.errors && { errors: err.errors }), // เพิ่มข้อมูล validation errors ใน response
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 };

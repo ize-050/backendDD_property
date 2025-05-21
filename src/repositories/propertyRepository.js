@@ -148,35 +148,406 @@ class PropertyRepository {
    * Create new property
    */
   async create(data) {
-    return prisma.property.create({
+    // Process features array if it exists
+    const featuresData = data.features ? 
+      Array.isArray(data.features) ? 
+        data.features.map(feature => ({
+          name: feature,
+          value: feature
+        })) : [] 
+      : [];
+    
+    // Process amenities array if it exists
+    const amenitiesData = data.amenities ? 
+      Array.isArray(data.amenities) ? 
+        data.amenities.map(amenity => ({
+          amenityType: amenity
+        })) : [] 
+      : [];
+    
+    // Process facilities object if it exists
+    let facilitiesData = [];
+    
+    if (data.facilities) {
+      // ตรวจสอบว่าเป็น JSON string หรือไม่
+      let facilitiesObj;
+      try {
+        facilitiesObj = typeof data.facilities === 'string' ? 
+          JSON.parse(data.facilities) : data.facilities;
+      } catch (e) {
+        console.error('Error parsing facilities:', e);
+        facilitiesObj = {};
+      }
+      
+      // ถ้าเป็น array ให้ใช้ตามที่ส่งมา
+      if (Array.isArray(facilitiesObj)) {
+        facilitiesData = facilitiesObj
+          .filter(facility => facility && (facility.type || facility.facilityType) && (facility.category || facility.facilityCategory))
+          .map(facility => {
+            // ตรวจสอบว่า facilityType และ facilityCategory เป็น enum ที่ถูกต้อง
+            return {
+              facilityType: facility.type || facility.facilityType,
+              facilityCategory: facility.category || facility.facilityCategory
+            };
+          });
+      } 
+      // ถ้าเป็น object ที่มีการจัดกลุ่มตามหมวดหมู่ (รูปแบบที่ส่งมาจาก frontend)
+      else if (typeof facilitiesObj === 'object' && facilitiesObj !== null) {
+        // แปลงชื่อหมวดหมู่จาก camelCase เป็น UPPERCASE_WITH_UNDERSCORE
+        const categoryMap = {
+          'fitnessAndSports': 'FITNESS_SPORTS',
+          'commonAreas': 'COMMON_AREAS',
+          'poolsAndRelaxation': 'POOLS_SPA_RELAXATION',
+          'diningAndEntertainment': 'DINING_ENTERTAINMENT_LEISURE',
+          'other': 'OTHER'
+        };
+        
+        // แปลงชื่อ facility จาก camelCase เป็น UPPERCASE_WITH_UNDERSCORE
+        const facilityMap = {
+          // Fitness & Sports
+          'basketballCourt': 'BASKETBALL_COURT',
+          'fitness': 'FITNESS',
+          'golfSimulator': 'GOLF_SIMULATOR',
+          'joggingTrack': 'JOGGING_TRACK',
+          'squashCourt': 'SQUASH_COURT',
+          'tennisCourt': 'TENNIS_COURT',
+          'yogaRoom': 'YOGA_ROOM',
+          
+          // Common Areas
+          'greenArea': 'GREEN_AREA',
+          'library': 'LIBRARY',
+          'lobby': 'LOBBY',
+          'meetingRoom': 'MEETING_ROOM',
+          'skyGarden': 'SKY_GARDEN',
+          'workingSpace': 'WORKING_SPACE',
+          
+          // Pools, Spa & Relaxation
+          'kidsPool': 'KIDS_POOL',
+          'onsen': 'ONSEN',
+          'sauna': 'SAUNA',
+          'skyPool': 'SKY_POOL',
+          'spa': 'SPA',
+          'salon': 'SALON',
+          'swimmingPool': 'SWIMMING_POOL',
+          
+          // Dining, Entertainment & Leisure
+          'bar': 'BAR',
+          'clubhouse': 'CLUBHOUSE',
+          'gameroom': 'GAMEROOM',
+          'karaokeRoom': 'KARAOKE_ROOM',
+          'miniTheater': 'MINI_THEATER',
+          'poolTable': 'POOL_TABLE',
+          'restaurant': 'RESTAURANT',
+          'skyBar': 'SKY_BAR',
+          
+          // Other
+          'security24hr': 'SECURITY_24HR',
+          'cctv': 'CCTV',
+          'conciergeServices': 'CONCIERGE_SERVICES',
+          'evCharger': 'EV_CHARGER',
+          'highSpeedLift': 'HIGH_SPEED_LIFT',
+          'kidsClub': 'KIDS_CLUB'
+        };
+        
+        // วนลูปแต่ละหมวดหมู่
+        Object.entries(facilitiesObj).forEach(([category, facilities]) => {
+          // แปลงชื่อหมวดหมู่เป็น enum ที่ถูกต้อง
+          const mappedCategory = categoryMap[category] || category.toUpperCase();
+          
+          // วนลูปแต่ละ facility ในหมวดหมู่
+          Object.entries(facilities).forEach(([facilityName, isEnabled]) => {
+            // เพิ่มเฉพาะ facility ที่ถูกเลือก (true)
+            if (isEnabled) {
+              // แปลงชื่อ facility เป็น enum ที่ถูกต้อง
+              const mappedFacilityType = facilityMap[facilityName] || facilityName.toUpperCase();
+              
+              facilitiesData.push({
+                facilityType: mappedFacilityType,
+                facilityCategory: mappedCategory
+              });
+            }
+          });
+        });
+      }
+    }
 
+    console.log(facilitiesData);
+    
+    // Process views array if it exists
+    let viewsData = [];
+    
+    if (data.views) {
+      // ตรวจสอบว่าเป็น JSON string หรือไม่
+      let viewsObj;
+      try {
+        viewsObj = typeof data.views === 'string' ? 
+          JSON.parse(data.views) : data.views;
+      } catch (e) {
+        console.error('Error parsing views:', e);
+        viewsObj = [];
+      }
+      
+      // แปลงชื่อ view จาก camelCase เป็น UPPERCASE_WITH_UNDERSCORE
+      const viewMap = {
+        'seaView': 'SEA_VIEW',
+        'cityView': 'CITY_VIEW',
+        'gardenView': 'GARDEN_VIEW',
+        'lakeView': 'LAKE_VIEW',
+        'mountainView': 'MOUNTAIN_VIEW',
+        'poolView': 'POOL_VIEW'
+      };
+      
+      // ถ้าเป็น array ให้ใช้ตามที่ส่งมา
+      if (Array.isArray(viewsObj)) {
+        viewsData = viewsObj
+          .filter(view => view) // กรองค่า null และ undefined ออกไป
+          .map(view => {
+            // แปลงชื่อ view เป็น enum ที่ถูกต้อง
+            const viewType = viewMap[view] || (typeof view === 'string' ? view.toUpperCase() : view);
+            return { viewType };
+          });
+      }
+      // ถ้าเป็น object ที่มีค่าเป็น boolean (รูปแบบที่อาจส่งมาจาก frontend)
+      else if (typeof viewsObj === 'object' && viewsObj !== null) {
+        Object.entries(viewsObj).forEach(([viewName, isEnabled]) => {
+          // เพิ่มเฉพาะ view ที่ถูกเลือก (true)
+          if (isEnabled) {
+            // แปลงชื่อ view เป็น enum ที่ถูกต้อง
+            const viewType = viewMap[viewName] || viewName.toUpperCase();
+            viewsData.push({ viewType });
+          }
+        });
+      }
+    }
+    
+    console.log('viewsData:', viewsData);
+    
+    // Process highlights array if it exists
+    let highlightsData = [];
+    
+    if (data.highlights) {
+      // ตรวจสอบว่าเป็น JSON string หรือไม่
+      let highlightsObj;
+      try {
+        highlightsObj = typeof data.highlights === 'string' ? 
+          JSON.parse(data.highlights) : data.highlights;
+      } catch (e) {
+        console.error('Error parsing highlights:', e);
+        highlightsObj = [];
+      }
+      
+      // แปลงชื่อ highlight จาก camelCase เป็น UPPERCASE_WITH_UNDERSCORE
+      const highlightMap = {
+        // Room Types
+        'duplex': 'DUPLEX',
+        'penthouse': 'PENTHOUSE',
+        'oneBedPlus': 'ONE_BED_PLUS',
+        'duplexPenthouse': 'DUPLEX_PENTHOUSE',
+        
+        // Highlights
+        'brandNewProperty': 'BRAND_NEW_PROPERTY',
+        'petsAllowed': 'PETS_ALLOWED',
+        'companyRegistration': 'COMPANY_REGISTRATION',
+        'rentToOwn': 'RENT_TO_OWN',
+        'npaAssets': 'NPA_ASSETS',
+        'foreignerQuota': 'FOREIGNER_QUOTA',
+        'saleDown': 'SALE_DOWN'
+      };
+      
+      // ถ้าเป็น array ให้ใช้ตามที่ส่งมา
+      if (Array.isArray(highlightsObj)) {
+        highlightsData = highlightsObj
+          .filter(highlight => highlight) // กรองค่า null และ undefined ออกไป
+          .map(highlight => {
+            // แปลงชื่อ highlight เป็น enum ที่ถูกต้อง
+            const highlightType = highlightMap[highlight] || (typeof highlight === 'string' ? highlight.toUpperCase() : highlight);
+            return { highlightType };
+          });
+      }
+      // ถ้าเป็น object ที่มีค่าเป็น boolean (รูปแบบที่อาจส่งมาจาก frontend)
+      else if (typeof highlightsObj === 'object' && highlightsObj !== null) {
+        Object.entries(highlightsObj).forEach(([highlightName, isEnabled]) => {
+          // เพิ่มเฉพาะ highlight ที่ถูกเลือก (true)
+          if (isEnabled) {
+            // แปลงชื่อ highlight เป็น enum ที่ถูกต้อง
+            const highlightType = highlightMap[highlightName] || highlightName.toUpperCase();
+            highlightsData.push({ highlightType });
+          }
+        });
+      }
+    }
+    
+    console.log('highlightsData:', highlightsData);
+    
+    // Process labels array if it exists
+    const labelsData = data.labels ? 
+      Array.isArray(data.labels) ? 
+        data.labels.map(label => ({
+          labelType: label
+        })) : [] 
+      : [];
+    
+    // Process nearby array if it exists
+    const nearbyData = data.nearby ? 
+      Array.isArray(data.nearby) ? 
+        data.nearby.map(nearby => ({
+          nearbyType: nearby.type,
+          distance: nearby.distance
+        })) : [] 
+      : [];
+    
+    // Process images array if it exists
+    const imagesData = data.images ? 
+      Array.isArray(data.images) ? 
+        data.images.map((image, index) => ({
+          url: image.url,
+          isFeatured: image.isFeatured || index === 0,
+          sortOrder: image.sortOrder || index
+        })) : [] 
+      : [];
+    
+    // Process floor plans array if it exists
+    const floorPlansData = data.floorPlans ? 
+      Array.isArray(data.floorPlans) ? 
+        data.floorPlans.map((plan, index) => ({
+          url: plan.url,
+          title: plan.title,
+          description: plan.description,
+          sortOrder: plan.sortOrder || index
+        })) : [] 
+      : [];
+    
+    // Process unit plans array if it exists
+    const unitPlansData = data.unitPlans ? 
+      Array.isArray(data.unitPlans) ? 
+        data.unitPlans.map(plan => ({
+          url: plan.url,
+          title: plan.title,
+          unitType: plan.unitType,
+          area: plan.area,
+          bedrooms: plan.bedrooms,
+          bathrooms: plan.bathrooms
+        })) : [] 
+      : [];
+
+    return prisma.property.create({
       data: {
+        // Basic property info
         title: data.title,
-        description: data.description,
-        price: data.price,
-        address: data.address,
-        city: data.city,
-        country: data.country,
-        zipCode: data.zipCode,
-        bedrooms: data.bedrooms,
-        bathrooms: data.bathrooms,
-        area: data.area,
+        projectName: data.projectName,
+        propertyCode: data.propertyCode,
+        referenceId: data.referenceId,
         propertyType: data.propertyType,
-        listingType: data.listingType,
-        status: data.status || 'ACTIVE',
-        user: {
-          connect: { id: data.userId },
-        },
-        images: data.images ? {
-          create: data.images,
+        
+        // Address info
+        address: data.address,
+        searchAddress: data.searchAddress,
+        district: data.district,
+        subdistrict: data.subdistrict,
+        province: data.province,
+        city: data.city,
+        country: data.country || 'Thailand',
+        zipCode: data.zipCode,
+        latitude: data.latitude ? parseFloat(data.latitude) : null,
+        longitude: data.longitude ? parseFloat(data.longitude) : null,
+        
+        // Zone relation
+        zone: data.zoneId ? {
+          connect: { id: parseInt(data.zoneId) }
         } : undefined,
-        features: data.features ? {
-          create: data.features,
+        
+        // Area info
+        area: data.area ? parseFloat(data.area) : null,
+        usableArea: data.usableArea ? parseFloat(data.usableArea) : null,
+        
+        // Land info
+        landSizeRai: data.landSizeRai ? parseFloat(data.landSizeRai) : null,
+        landSizeNgan: data.landSizeNgan ? parseFloat(data.landSizeNgan) : null,
+        landSizeSqWah: data.landSizeSqWah ? parseFloat(data.landSizeSqWah) : null,
+        landWidth: data.landWidth ? parseFloat(data.landWidth) : null,
+        landLength: data.landLength ? parseFloat(data.landLength) : null,
+        landShape: data.landShape,
+        landGrade: data.landGrade,
+        landAccess: data.landAccess,
+        ownershipType: data.ownershipType,
+        ownershipQuota: data.ownershipQuota,
+        
+        // Building info
+        bedrooms: data.bedrooms ? parseInt(data.bedrooms) : null,
+        bathrooms: data.bathrooms ? parseInt(data.bathrooms) : null,
+        floors: data.floors ? parseInt(data.floors) : null,
+        furnishing: data.furnishing,
+        constructionYear: data.constructionYear ? parseInt(data.constructionYear) : null,
+        communityFee: data.communityFee ? parseFloat(data.communityFee) : null,
+        buildingUnit: data.buildingUnit,
+        floor: data.floor ? parseInt(data.floor) : null,
+        
+        // Multilingual content
+        description: data.description,
+        translatedTitles: data.translatedTitles,
+        translatedDescriptions: data.translatedDescriptions,
+        paymentPlan: data.paymentPlan,
+        translatedPaymentPlans: data.translatedPaymentPlans,
+        
+        // Contact and social media
+        socialMedia: data.socialMedia,
+        contactInfo: data.contactInfo,
+        
+        // Status and metadata
+        status: data.status || 'ACTIVE',
+        
+        // User relation
+        user: {
+          connect: { id: 1 },
+        },
+        
+        // Related entities
+        images: imagesData.length > 0 ? {
+          create: imagesData,
+        } : undefined,
+        
+        features: featuresData.length > 0 ? {
+          create: featuresData,
+        } : undefined,
+        
+        amenities: amenitiesData.length > 0 ? {
+          create: amenitiesData,
+        } : undefined,
+        
+        facilities: facilitiesData.length > 0 ? {
+          create: facilitiesData,
+        } : undefined,
+        
+        views: viewsData.length > 0 ? {
+          create: viewsData,
+        } : undefined,
+        
+        highlights: highlightsData.length > 0 ? {
+          create: highlightsData,
+        } : undefined,
+        
+        labels: labelsData.length > 0 ? {
+          create: labelsData,
+        } : undefined,
+        
+        nearbyPlaces: nearbyData.length > 0 ? {
+          create: nearbyData,
+        } : undefined,
+        
+        unitPlans: unitPlansData.length > 0 ? {
+          create: unitPlansData,
         } : undefined,
       },
       include: {
         images: true,
         features: true,
+        amenities: true,
+        facilities: true,
+        views: true,
+        highlights: true,
+        labels: true,
+        nearbyPlaces: true,
+        unitPlans: true,
       },
     });
   }
