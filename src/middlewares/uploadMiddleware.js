@@ -142,9 +142,69 @@ const handleSingleImageUpload = (req, res, next) => {
   });
 };
 
+// Blog image upload configuration
+const blogImageStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    // Create directory if it doesn't exist
+    const uploadDir = path.join(__dirname, '../../public/images/blogs');
+    
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    // Generate unique filename
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, 'blog-' + uniqueSuffix + ext);
+  }
+});
+
+// Create multer upload instance for blog images
+const uploadBlogImage = multer({
+  storage: blogImageStorage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB
+  }
+}).single('featuredImage');
+
+/**
+ * Middleware for handling blog image upload
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next function
+ */
+const handleBlogImageUpload = (req, res, next) => {
+  uploadBlogImage(req, res, function(err) {
+    if (err instanceof multer.MulterError) {
+      // Multer error
+      return next(new ApiError(400, `Image upload error: ${err.message}`));
+    } else if (err) {
+      // Other error
+      return next(err);
+    }
+    
+    // If file was uploaded, add the URL to the request body
+    if (req.file) {
+      // Create URL for the uploaded image
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const imageUrl = `${baseUrl}/images/blogs/${req.file.filename}`;
+      
+      // Add image URL to request body
+      req.body.featuredImage = imageUrl;
+    }
+    
+    next();
+  });
+};
+
 module.exports = {
   uploadFields,
   handlePropertyFormData,
   uploadSingleImage,
-  handleSingleImageUpload
+  handleSingleImageUpload,
+  handleBlogImageUpload
 };

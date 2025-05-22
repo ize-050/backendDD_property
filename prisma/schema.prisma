@@ -28,6 +28,7 @@ model User {
   updatedAt         DateTime            @updatedAt @map("updated_at")
   properties        Property[]
   listings          PropertyListing[]
+  blogs             Blog[]
   
   @@map("users")
 }
@@ -544,4 +545,41 @@ enum ContactStatus {
   READ
   REPLIED
   ARCHIVED
+}
+
+// Blog model - สำหรับบทความในเว็บไซต์
+model Blog {
+  id                Int                 @id @default(autoincrement())
+  slug              String              @unique // URL slug สำหรับบทความ
+  status            BlogStatus          @default(DRAFT)
+  viewCount         Int                 @default(0) @map("view_count") // จำนวนการเข้าชม
+  
+  // ข้อมูลหลายภาษา
+  title             String              // หัวข้อภาษาอังกฤษ (หลัก)
+  content           String              @db.LongText // เนื้อหาภาษาอังกฤษ (หลัก)
+  translatedTitles  Json?               @map("translated_titles") // หัวข้อในหลายภาษา (JSON format: {"th": "...", "zh": "...", "ru": "..."})
+  translatedContents Json?              @map("translated_contents") // เนื้อหาในหลายภาษา (JSON format: {"th": "...", "zh": "...", "ru": "..."})
+  
+  // ข้อมูลเพิ่มเติม
+  featuredImage     String?             @map("featured_image") // URL รูปภาพหลัก
+  category          String?             // หมวดหมู่ (เก็บเป็น string แทน relation)
+  tags              String?             // แท็ก (เก็บเป็น string คั่นด้วย comma)
+  
+  // ข้อมูลผู้สร้างและเวลา
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  publishedAt       DateTime?           @map("published_at") // วันที่เผยแพร่
+  userId            Int                 @map("user_id") // ผู้สร้างบทความ
+  user              User                @relation(fields: [userId], references: [id])
+  
+  @@map("blogs")
+}
+
+
+
+// สถานะบทความ
+enum BlogStatus {
+  DRAFT       // ฉบับร่าง
+  PUBLISHED   // เผยแพร่แล้ว
+  ARCHIVED    // เก็บถาวร
 }

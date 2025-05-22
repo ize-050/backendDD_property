@@ -4,6 +4,7 @@ const zoneRoutes = require('./zoneRoutes');
 const searchRoutes = require('./searchRoutes');
 // const userRoutes = require('./userRoutes');
 const authRoutes = require('./authRoutes');
+const blogRoutes = require('./blogRoutes');
 
 const router = express.Router();
 
@@ -13,6 +14,7 @@ router.use('/zones', zoneRoutes);
 router.use('/search', searchRoutes);
 // router.use('/users', userRoutes);
 router.use('/auth', authRoutes);
+router.use('/blogs', blogRoutes);
 
 // API documentation route
 router.get('/', (req, res) => {

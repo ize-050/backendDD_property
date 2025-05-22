@@ -151,10 +151,14 @@ class PropertyRepository {
     // Process features array if it exists
     const featuresData = data.features ? 
       Array.isArray(data.features) ? 
-        data.features.map(feature => ({
-          name: feature,
-          value: feature
-        })) : [] 
+        data.features.map(feature => {
+          // จำกัดความยาวของค่า value ไม่เกิน 255 ตัวอักษร
+          const truncatedValue = typeof feature === 'string' ? feature.substring(0, 255) : String(feature).substring(0, 255);
+          return {
+            name: truncatedValue,
+            value: truncatedValue
+          };
+        }) : [] 
       : [];
     
     // Process amenities array if it exists
@@ -277,14 +281,17 @@ class PropertyRepository {
     let viewsData = [];
     
     if (data.views) {
+      console.log('Original views data:', data.views);
+      
       // ตรวจสอบว่าเป็น JSON string หรือไม่
       let viewsObj;
       try {
         viewsObj = typeof data.views === 'string' ? 
           JSON.parse(data.views) : data.views;
+        console.log("Parsed viewsObj:", viewsObj);
       } catch (e) {
         console.error('Error parsing views:', e);
-        viewsObj = [];
+        viewsObj = {};
       }
       
       // แปลงชื่อ view จาก camelCase เป็น UPPERCASE_WITH_UNDERSCORE
@@ -307,20 +314,47 @@ class PropertyRepository {
             return { viewType };
           });
       }
-      // ถ้าเป็น object ที่มีค่าเป็น boolean (รูปแบบที่อาจส่งมาจาก frontend)
+      // ถ้าเป็น object ที่มีค่าเป็น boolean (รูปแบบที่ส่งมาจาก frontend)
       else if (typeof viewsObj === 'object' && viewsObj !== null) {
+        // ทำเป็น array ของ objects ที่มี viewType ที่ถูกต้อง
         Object.entries(viewsObj).forEach(([viewName, isEnabled]) => {
           // เพิ่มเฉพาะ view ที่ถูกเลือก (true)
           if (isEnabled) {
             // แปลงชื่อ view เป็น enum ที่ถูกต้อง
-            const viewType = viewMap[viewName] || viewName.toUpperCase();
+            let viewType = viewMap[viewName] || viewName.toUpperCase();
+            
+            // ตรวจสอบว่า viewType เป็นค่าที่ถูกต้องตาม enum ใน schema.prisma
+            const validViewTypes = ['SEA_VIEW', 'CITY_VIEW', 'GARDEN_VIEW', 'LAKE_VIEW', 'MOUNTAIN_VIEW', 'POOL_VIEW'];
+            
+            if (!validViewTypes.includes(viewType)) {
+              console.warn(`Invalid viewType: ${viewType}, trying to fix...`);
+              // พยายามแก้ไข viewType ให้ถูกต้อง
+              if (viewName.includes('sea') || viewName.includes('Sea')) {
+                viewType = 'SEA_VIEW';
+              } else if (viewName.includes('city') || viewName.includes('City')) {
+                viewType = 'CITY_VIEW';
+              } else if (viewName.includes('garden') || viewName.includes('Garden')) {
+                viewType = 'GARDEN_VIEW';
+              } else if (viewName.includes('lake') || viewName.includes('Lake')) {
+                viewType = 'LAKE_VIEW';
+              } else if (viewName.includes('mountain') || viewName.includes('Mountain')) {
+                viewType = 'MOUNTAIN_VIEW';
+              } else if (viewName.includes('pool') || viewName.includes('Pool')) {
+                viewType = 'POOL_VIEW';
+              } else {
+                console.warn(`Could not fix viewType: ${viewType}, skipping...`);
+                return; // ข้ามไป
+              }
+              console.log(`Fixed viewType to: ${viewType}`);
+            }
+            
             viewsData.push({ viewType });
           }
         });
       }
     }
     
-    console.log('viewsData:', viewsData);
+    console.log('Final viewsData:', viewsData);
     
     // Process highlights array if it exists
     let highlightsData = [];
@@ -518,25 +552,25 @@ class PropertyRepository {
           create: facilitiesData,
         } : undefined,
         
-        views: viewsData.length > 0 ? {
-          create: viewsData,
-        } : undefined,
+        // views: viewsData.length > 0 ? {
+        //   create: viewsData,
+        // } : undefined,
         
-        highlights: highlightsData.length > 0 ? {
-          create: highlightsData,
-        } : undefined,
+        // highlights: highlightsData.length > 0 ? {
+        //   create: highlightsData,
+        // } : undefined,
         
         labels: labelsData.length > 0 ? {
           create: labelsData,
         } : undefined,
         
-        nearbyPlaces: nearbyData.length > 0 ? {
-          create: nearbyData,
-        } : undefined,
+        // nearbyPlaces: nearbyData.length > 0 ? {
+        //   create: nearbyData,
+        // } : undefined,
         
-        unitPlans: unitPlansData.length > 0 ? {
-          create: unitPlansData,
-        } : undefined,
+        // unitPlans: unitPlansData.length > 0 ? {
+        //   create: unitPlansData,
+        // } : undefined,
       },
       include: {
         images: true,
