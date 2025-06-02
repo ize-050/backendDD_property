@@ -101,7 +101,6 @@ class SearchService {
             ]
           },
           listings: {
-            take: 1,
             orderBy: {
               createdAt: 'desc'
             }

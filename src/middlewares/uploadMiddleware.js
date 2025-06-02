@@ -6,31 +6,50 @@ const { ApiError } = require('./errorHandler');
 // Define storage for uploaded files
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // Create directory if it doesn't exist
+    // Get property ID from route params or use 'temp' for new properties
     const propertyId = req.params.id || 'temp';
-    let uploadDir;
     
+    let uploadDir;
+
     // Determine upload directory based on field name
     if (file.fieldname === 'floorPlanImages') {
       uploadDir = path.join(__dirname, '../../public/images/properties', propertyId.toString(), 'floor-plans');
     } else if (file.fieldname === 'unitPlanImages') {
       uploadDir = path.join(__dirname, '../../public/images/properties', propertyId.toString(), 'unit-plans');
     } else {
-      // Default for property images
+      // Default for main property images
       uploadDir = path.join(__dirname, '../../public/images/properties', propertyId.toString());
     }
-    
+
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
-    
+
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    // Generate unique filename
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    // Get current date in YYYY-MM-DD format
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Generate truly unique name with timestamp, random number and original filename
+    const timestamp = Date.now();
+    const random = Math.round(Math.random() * 1E9).toString().padStart(9, '0');
+    
+    // Include part of original filename (sanitized) for better readability
+    let origNameSanitized = file.originalname
+      .replace(/[^a-zA-Z0-9]/g, '') // Remove special chars
+      .substring(0, 8);              // Take first 8 chars
+    
+    if (!origNameSanitized) {
+      origNameSanitized = 'file';    // Fallback if no valid chars
+    }
+    
+    // Get file extension
     const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+    
+    // Final filename: timestamp-random-origname-date.ext
+    cb(null, `${timestamp}-${random}-${origNameSanitized}-${dateStr}${ext}`);
   }
 });
 
@@ -74,6 +93,8 @@ const handlePropertyFormData = (req, res, next) => {
     
     // Process property images
     if (req.files && req.files.images && req.files.images.length > 0) {
+      console.log(`Found ${req.files.images.length} uploaded images:`, req.files.images.map(f => f.filename));
+      
       // Create image data array
       const images = req.files.images.map((file, index) => {
         return {
@@ -82,6 +103,8 @@ const handlePropertyFormData = (req, res, next) => {
           sortOrder: index
         };
       });
+      
+      console.log('Created image data:', JSON.stringify(images, null, 2));
       
       // Add images to request body
       req.body.images = images;
@@ -155,10 +178,28 @@ const blogImageStorage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    // Generate unique filename
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    // Get current date in YYYY-MM-DD format
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Generate truly unique name with timestamp, random number and original filename
+    const timestamp = Date.now();
+    const random = Math.round(Math.random() * 1E9).toString().padStart(9, '0');
+    
+    // Include part of original filename (sanitized) for better readability
+    let origNameSanitized = file.originalname
+      .replace(/[^a-zA-Z0-9]/g, '') // Remove special chars
+      .substring(0, 8);              // Take first 8 chars
+    
+    if (!origNameSanitized) {
+      origNameSanitized = 'file';    // Fallback if no valid chars
+    }
+    
+    // Get file extension
     const ext = path.extname(file.originalname);
-    cb(null, 'blog-' + uniqueSuffix + ext);
+    
+    // Final filename: timestamp-random-origname-date.ext
+    cb(null, `${timestamp}-${random}-${origNameSanitized}-${dateStr}${ext}`);
   }
 });
 

@@ -196,6 +196,58 @@ class ZoneService {
       throw error;
     }
   }
+  
+  /**
+   * Get random zones with property counts
+   * @param {number} limit - Number of random zones to return
+   * @returns {Promise<Array>} - List of random zones with property counts
+   */
+  async getRandomZonesWithPropertyCounts(limit = 3) {
+    try {
+      // Get all zones first
+      const allZones = await prisma.zone.findMany({
+        select: {
+          id: true,
+          name: true,
+          nameEn: true,
+          nameTh: true,
+          description: true,
+          city: true,
+          province: true,
+          _count: {
+            select: {
+              properties: true
+            }
+          }
+        }
+      });
+      
+      // Filter out zones with no properties
+      const zonesWithProperties = allZones.filter(zone => zone._count.properties > 0);
+      
+      // Shuffle and get random zones
+      const shuffled = [...zonesWithProperties].sort(() => 0.5 - Math.random());
+      const randomZones = shuffled.slice(0, limit);
+      
+      // Format the response
+      const formattedZones = randomZones.map(zone => ({
+        id: zone.id,
+        name: zone.name,
+        nameEn: zone.nameEn,
+        nameTh: zone.nameTh,
+        description: zone.description,
+        city: zone.city,
+        province: zone.province,
+        imagePath: zone.imagePath,
+        propertyCount: zone._count.properties
+      }));
+      
+      return formattedZones;
+    } catch (error) {
+      console.error('Error in getRandomZonesWithPropertyCounts service:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new ZoneService();

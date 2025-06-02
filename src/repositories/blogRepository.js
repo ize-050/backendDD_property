@@ -111,7 +111,12 @@ class BlogRepository {
       if (data.ru.title) translatedTitles.ru = data.ru.title;
       if (data.ru.content) translatedContents.ru = data.ru.content;
     }
-    
+
+      if (data.title) translatedTitles.en = data.title;
+      if (data.content) translatedContents.en = data.content;
+
+
+
     updateData.translatedTitles = translatedTitles;
     updateData.translatedContents = translatedContents;
     

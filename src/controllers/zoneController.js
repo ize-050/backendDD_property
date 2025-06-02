@@ -76,6 +76,24 @@ class ZoneController {
       next(error);
     }
   }
+
+  /**
+   * Get random zones with property counts for Explore Locations
+   * @route GET /api/zones/explore
+   */
+  async getExploreLocations(req, res, next) {
+    try {
+      const { limit = 3 } = req.query;
+      const randomZones = await zoneService.getRandomZonesWithPropertyCounts(Number(limit));
+      
+      res.status(200).json({
+        status: 'success',
+        data: randomZones
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new ZoneController();

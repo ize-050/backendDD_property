@@ -93,79 +93,59 @@ class PropertyController {
   async createProperty(req, res, next) {
     try {
       // Validate request
+      const userId = req.user.userId;
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         throw new ApiError(400, 'Validation error', true, null, errors.array());
       }
-      
-      // Process form data
+
+      const parseJsonField = (field) => {
+        if (!field) return undefined;
+        if (typeof field === 'string') {
+          try {
+            return JSON.parse(field);
+          } catch (error) {
+            return field;
+          }
+        }
+        return field;
+      };
+
+      // Process form data - convert numeric fields and parse JSON strings
       const propertyData = {
         ...req.body,
         // Convert numeric fields
-        bedrooms: req.body.bedrooms ? parseInt(req.body.bedrooms) : undefined,
-        bathrooms: req.body.bathrooms ? parseInt(req.body.bathrooms) : undefined,
+        userId: userId,
+        listings : JSON.parse(req.body.listings),
+        bedrooms: req.body.bedrooms ? parseInt(req.body.bedrooms, 10) : undefined,
+        bathrooms: req.body.bathrooms ? parseInt(req.body.bathrooms, 10) : undefined,
         area: req.body.area ? parseFloat(req.body.area) : undefined,
         price: req.body.price ? parseFloat(req.body.price) : undefined,
+        promotionalPrice: req.body.promotionalPrice ? parseFloat(req.body.promotionalPrice) : undefined,
+        rentalPrice: req.body.rentalPrice ? parseFloat(req.body.rentalPrice) : undefined,
+        shortTerm3Months: req.body.shortTerm3Months ? parseFloat(req.body.shortTerm3Months) : undefined,
+        shortTerm6Months: req.body.shortTerm6Months ? parseFloat(req.body.shortTerm6Months) : undefined,
+        shortTerm1Year: req.body.shortTerm1Year ? parseFloat(req.body.shortTerm1Year) : undefined,
+        zone_id : req.body.zone_id ? parseInt(req.body.zone_id, 10) : undefined,
+        // Parse JSON strings for various fields
+        features: parseJsonField(req.body.features),
+        highlights: parseJsonField(req.body.highlights),
+        nearby: parseJsonField(req.body.nearby),
+        views: parseJsonField(req.body.views),
+        facilities: parseJsonField(req.body.facilities),
+        amenities: parseJsonField(req.body.amenities),
+        labels: parseJsonField(req.body.labels),
+        unitPlans: parseJsonField(req.body.unitPlans),
+        floorPlans: parseJsonField(req.body.floorPlans),
+        contactInfo: parseJsonField(req.body.contactInfo),
+        socialMedia: parseJsonField(req.body.socialMedia),
         
-        // Process features if they exist in form data
-        features: req.body.features ? 
-          (typeof req.body.features === 'string' ? 
-            JSON.parse(req.body.features) : req.body.features) : 
-          undefined,
-          
-        // Process highlights if they exist in form data
-        highlights: req.body.highlights ? 
-          (typeof req.body.highlights === 'string' ? 
-            JSON.parse(req.body.highlights) : req.body.highlights) : 
-          undefined,
-            
-        // Process nearby if they exist in form data
-        nearby: req.body.nearby ? 
-          (typeof req.body.nearby === 'string' ? 
-            JSON.parse(req.body.nearby) : req.body.nearby) : 
-          undefined,
-            
-        // Process views if they exist in form data
-        views: req.body.views ? 
-          (typeof req.body.views === 'string' ? 
-            JSON.parse(req.body.views) : req.body.views) : 
-          undefined,
-            
-        // Process facilities if they exist in form data
-        facilities: req.body.facilities ? 
-          (typeof req.body.facilities === 'string' ? 
-            JSON.parse(req.body.facilities) : req.body.facilities) : 
-          undefined,
-            
-        // Process contact info if it exists in form data
-        contactInfo: req.body.contactInfo ? 
-          (typeof req.body.contactInfo === 'string' ? 
-            JSON.parse(req.body.contactInfo) : req.body.contactInfo) : 
-          undefined,
-            
-        // Process social media if it exists in form data
-        socialMedia: req.body.socialMedia ? 
-          (typeof req.body.socialMedia === 'string' ? 
-            JSON.parse(req.body.socialMedia) : req.body.socialMedia) : 
-          undefined,
-            
-        // Process translations if they exist in form data
-        translatedTitles: req.body.translatedTitles ? 
-          (typeof req.body.translatedTitles === 'string' ? 
-            JSON.parse(req.body.translatedTitles) : req.body.translatedTitles) : 
-          undefined,
-            
-        translatedDescriptions: req.body.translatedDescriptions ? 
-          (typeof req.body.translatedDescriptions === 'string' ? 
-            JSON.parse(req.body.translatedDescriptions) : req.body.translatedDescriptions) : 
-          undefined,
-            
-        translatedPaymentPlans: req.body.translatedPaymentPlans ? 
-          (typeof req.body.translatedPaymentPlans === 'string' ? 
-            JSON.parse(req.body.translatedPaymentPlans) : req.body.translatedPaymentPlans) : 
-          undefined,
+        // Parse translations
+        translatedTitles: parseJsonField(req.body.translatedTitles),
+        translatedDescriptions: parseJsonField(req.body.translatedDescriptions),
+        translatedPaymentPlans: parseJsonField(req.body.translatedPaymentPlans),
       };
-
+      console.log('propertyData.images:', propertyData.images);
       const property = await propertyService.createProperty(propertyData, req.user.id);
       res.status(201).json({
         status: 'success',
@@ -188,9 +168,55 @@ class PropertyController {
         throw new ApiError(400, 'Validation error', true, null, errors.array());
       }
 
+      // Define a local function for parsing JSON
+      const parseJsonField = (field) => {
+        if (!field) return undefined;
+        if (typeof field === 'string') {
+          try {
+            return JSON.parse(field);
+          } catch (error) {
+            return field;
+          }
+        }
+        return field;
+      };
+
+      // Process form data similar to create
+      const propertyData = {
+        ...req.body,
+        // Convert numeric fields
+        bedrooms: req.body.bedrooms ? parseInt(req.body.bedrooms, 10) : undefined,
+        bathrooms: req.body.bathrooms ? parseInt(req.body.bathrooms, 10) : undefined,
+        area: req.body.area ? parseFloat(req.body.area) : undefined,
+        price: req.body.price ? parseFloat(req.body.price) : undefined,
+        promotionalPrice: req.body.promotionalPrice ? parseFloat(req.body.promotionalPrice) : undefined,
+        rentalPrice: req.body.rentalPrice ? parseFloat(req.body.rentalPrice) : undefined,
+        shortTerm3Months: req.body.shortTerm3Months ? parseFloat(req.body.shortTerm3Months) : undefined,
+        shortTerm6Months: req.body.shortTerm6Months ? parseFloat(req.body.shortTerm6Months) : undefined,
+        shortTerm1Year: req.body.shortTerm1Year ? parseFloat(req.body.shortTerm1Year) : undefined,
+        
+        // Parse JSON strings for various fields using the helper method
+        features: parseJsonField(req.body.features),
+        highlights: parseJsonField(req.body.highlights),
+        nearby: parseJsonField(req.body.nearby),
+        views: parseJsonField(req.body.views),
+        facilities: parseJsonField(req.body.facilities),
+        amenities: parseJsonField(req.body.amenities),
+        labels: parseJsonField(req.body.labels),
+        unitPlans: parseJsonField(req.body.unitPlans),
+        floorPlans: parseJsonField(req.body.floorPlans),
+        contactInfo: parseJsonField(req.body.contactInfo),
+        socialMedia: parseJsonField(req.body.socialMedia),
+        
+        // Parse translations
+        translatedTitles: parseJsonField(req.body.translatedTitles),
+        translatedDescriptions: parseJsonField(req.body.translatedDescriptions),
+        translatedPaymentPlans: parseJsonField(req.body.translatedPaymentPlans),
+      };
+
       const property = await propertyService.updateProperty(
         req.params.id,
-        req.body,
+        propertyData,
         req.user.id
       );
 
@@ -316,6 +342,46 @@ class PropertyController {
       res.status(200).json({
         status: 'success',
         message: 'Feature deleted successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get the next property code
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @returns {Promise<void>}
+   */
+  async getNextPropertyCode(req, res) {
+    try {
+      const nextCode = await propertyService.generateNextPropertyCode();
+      res.status(200).json({ success: true, propertyCode: nextCode });
+    } catch (error) {
+      console.error('Error getting next property code:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to get next property code',
+        error: error.message 
+      });
+    }
+  }
+
+  /**
+   * Duplicate a property
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   * @returns {Promise<void>}
+   */
+  async duplicateProperty(req, res, next) {
+    try {
+      const duplicatedProperty = await propertyService.duplicateProperty(req.params.id, req.user.id);
+      res.status(201).json({
+        status: 'success',
+        message: 'Property duplicated successfully',
+        data: duplicatedProperty,
       });
     } catch (error) {
       next(error);

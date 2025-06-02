@@ -12,24 +12,24 @@ datasource db {
 
 // User model
 model User {
-  id                Int                 @id @default(autoincrement())
-  email             String              @unique
-  password          String
-  name              String?
-  phone             String?
-  phoneAlt          String?             @map("phone_alt") // เบอร์โทรสำรอง
-  lineId            String?             @map("line_id")
-  wechatId          String?             @map("wechat_id")
-  whatsapp          String?             
-  facebook          String?
-  instagram         String?
-  role              Role                @default(USER)
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  properties        Property[]
-  listings          PropertyListing[]
-  blogs             Blog[]
-  
+  id         Int               @id @default(autoincrement())
+  email      String            @unique
+  password   String
+  name       String?
+  phone      String?
+  phoneAlt   String?           @map("phone_alt") // เบอร์โทรสำรอง
+  lineId     String?           @map("line_id")
+  wechatId   String?           @map("wechat_id")
+  whatsapp   String?
+  facebook   String?
+  instagram  String?
+  role       Role              @default(USER)
+  createdAt  DateTime          @default(now()) @map("created_at")
+  updatedAt  DateTime          @updatedAt @map("updated_at")
+  properties Property[]
+  listings   PropertyListing[]
+  blogs      Blog[]
+
   @@map("users")
 }
 
@@ -41,148 +41,170 @@ enum Role {
 
 // Zone model - สำหรับโซน/ย่านต่างๆ
 model Zone {
-  id                Int                 @id @default(autoincrement())
-  name              String              @unique // ชื่อโซน เช่น Jomtien, Pratumnak
-  nameEn            String              @map("name_en") // ชื่อภาษาอังกฤษ
-  nameTh            String?             @map("name_th") // ชื่อภาษาไทย
-  description       String?             @db.Text // คำอธิบาย
-  city              String?             // เมือง เช่น Pattaya
-  province          String              // จังหวัด เช่น Chonburi
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // ชื่อโซน เช่น Jomtien, Pratumnak
+  nameEn      String   @map("name_en") // ชื่อภาษาอังกฤษ
+  nameTh      String?  @map("name_th") // ชื่อภาษาไทย
+  description String?  @db.Text // คำอธิบาย
+  city        String? // เมือง เช่น Pattaya
+  province    String // จังหวัด เช่น Chonburi
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
   // ความสัมพันธ์กับ Property
-  properties        Property[]
-  
+  properties Property[]
+
   @@map("zones")
 }
 
 // Property model - หลักการคือ Property เป็นข้อมูลหลักของอสังหาริมทรัพย์
 model Property {
-  id                Int                 @id @default(autoincrement())
-  title             String              // ชื่อประกาศ (propertyTitle จาก formData)
-  projectName       String              @map("project_name") // ชื่อโครงการ
-  propertyCode      String?             @unique @map("property_code") // รหัสทรัพย์ (auto generate)
-  referenceId       String?             @map("reference_id") // รหัสอ้างอิง
-  propertyType      PropertyType        @map("property_type") // ประเภทอสังหาริมทรัพย์ (คอนโด, บ้านเดี่ยว, ทาวน์เฮาส์, ฯลฯ)
-  address           String              @db.Text // ที่อยู่
-  searchAddress     String?             @db.Text @map("search_address") // ที่อยู่สำหรับค้นหา
-  district          String              // เขต/อำเภอ
-  subdistrict       String              @map("subdistrict") // แขวง/ตำบล
-  province          String              // จังหวัด
-  city              String?             // เมือง
-  country           String              @default("Thailand")
-  zipCode           String              @map("zip_code") // รหัสไปรษณีย์
-  latitude          Float?              @map("lat") // พิกัด Latitude
-  longitude         Float?              @map("lng") // พิกัด Longitude
-  
+  id            Int          @id @default(autoincrement())
+  title         String // ชื่อประกาศ (propertyTitle จาก formData)
+  projectName   String       @map("project_name") // ชื่อโครงการ
+  propertyCode  String?      @unique @map("property_code") // รหัสทรัพย์ (auto generate)
+  referenceId   String?      @map("reference_id") // รหัสอ้างอิง
+  propertyType  PropertyType @map("property_type") // ประเภทอสังหาริมทรัพย์ (คอนโด, บ้านเดี่ยว, ทาวน์เฮาส์, ฯลฯ)
+  address       String       @db.Text // ที่อยู่
+  searchAddress String?      @map("search_address") @db.Text // ที่อยู่สำหรับค้นหา
+  district      String // เขต/อำเภอ
+  subdistrict   String       @map("subdistrict") // แขวง/ตำบล
+  province      String // จังหวัด
+  city          String? // เมือง
+  country       String       @default("Thailand")
+  zipCode       String       @map("zip_code") // รหัสไปรษณีย์
+  latitude      Float?       @map("lat") // พิกัด Latitude
+  longitude     Float?       @map("lng") // พิกัด Longitude
+
   // ความสัมพันธ์กับ Zone
-  zoneId            Int?                @map("zone_id")
-  zone              Zone?               @relation(fields: [zoneId], references: [id])
-  
+  zoneId Int?  @map("zone_id")
+  zone   Zone? @relation(fields: [zoneId], references: [id])
+
   // ข้อมูลพื้นที่ - สำหรับทุกประเภททรัพย์สิน
-  area              Float               // พื้นที่ (ตร.ม.)
-  usableArea        Float?              @map("usable_area") // พื้นที่ใช้สอย (ตร.ม.)
-  
+  area       Float // พื้นที่ (ตร.ม.)
+  usableArea Float? @map("usable_area") // พื้นที่ใช้สอย (ตร.ม.)
+
   // ข้อมูลที่ดิน - สำหรับที่ดิน (LAND)
-  landSizeRai       Float?              @map("land_size_rai") // ขนาดที่ดิน (ไร่)
-  landSizeNgan      Float?              @map("land_size_ngan") // ขนาดที่ดิน (งาน)
-  landSizeSqWah     Float?              @map("land_size_sq_wah") // ขนาดที่ดิน (ตารางวา)
-  landWidth         Float?              @map("land_width") // ความกว้างของที่ดิน (เมตร)
-  landLength        Float?              @map("land_length") // ความยาวของที่ดิน (เมตร)
-  landShape         LandShape?          @map("land_shape") // รูปทรงที่ดิน
-  landGrade         LandGrade?          @map("land_grade") // เกรดที่ดิน
-  landAccess        LandAccess?         @map("land_access") // การเข้าถึงที่ดิน
-  ownershipType     OwnershipType?      @map("ownership_type") // ประเภทกรรมสิทธิ์
-  ownershipQuota    String?             @map("ownership_quota") // สัดส่วนกรรมสิทธิ์
-  
+  landSizeRai    Float?         @map("land_size_rai") // ขนาดที่ดิน (ไร่)
+  landSizeNgan   Float?         @map("land_size_ngan") // ขนาดที่ดิน (งาน)
+  landSizeSqWah  Float?         @map("land_size_sq_wah") // ขนาดที่ดิน (ตารางวา)
+  landWidth      Float?         @map("land_width") // ความกว้างของที่ดิน (เมตร)
+  landLength     Float?         @map("land_length") // ความยาวของที่ดิน (เมตร)
+  landShape      LandShape?     @map("land_shape") // รูปทรงที่ดิน
+  landGrade      LandGrade?     @map("land_grade") // เกรดที่ดิน
+  landAccess     LandAccess?    @map("land_access") // การเข้าถึงที่ดิน
+  ownershipType  OwnershipType? @map("ownership_type") // ประเภทกรรมสิทธิ์์
+  ownershipQuota String?        @map("ownership_quota") // สัดส่วนกรรมสิทธิ์
+
   // ข้อมูลบ้าน/คอนโด - สำหรับบ้านและคอนโด
-  bedrooms          Int?                // จำนวนห้องนอน
-  bathrooms         Int?                // จำนวนห้องน้ำ
-  floors            Int?                // จำนวนชั้น
-  furnishing        FurnishingType?     @default(UNFURNISHED) // เฟอร์นิเจอร์
-  constructionYear  Int?                @map("construction_year") // ปีที่สร้าง
-  communityFee      Float?              @map("community_fee") // ค่าส่วนกลาง
-  buildingUnit      String?             @map("building_unit") // อาคาร/ยูนิต (สำหรับคอนโด)
-  floor             Int?                // ชั้นที่ (สำหรับคอนโด)
-  
+  bedrooms         Int? // จำนวนห้องนอน
+  bathrooms        Int? // จำนวนห้องน้ำ
+  floors           Int? // จำนวนชั้น
+  furnishing       FurnishingType? @default(UNFURNISHED) // เฟอร์นิเจอร์
+  constructionYear Int?            @map("construction_year") // ปีที่สร้าง
+  communityFee     Float?          @map("community_fee") // ค่าส่วนกลาง
+  buildingUnit     String?         @map("building_unit") // อาคาร/ยูนิต (สำหรับคอนโด)
+  floor            Int? // ชั้นที่ (สำหรับคอนโด)
+
   // ข้อมูลหลายภาษา
-  description       String              @db.Text // คำอธิบายภาษาอังกฤษ
-  translatedTitles  Json?               @map("translated_titles") // หัวข้อในหลายภาษา (JSON format: {"th": "...", "zh": "...", "ru": "..."})
-  translatedDescriptions Json?          @map("translated_descriptions") // คำอธิบายในหลายภาษา (JSON format: {"th": "...", "zh": "...", "ru": "..."})
-  paymentPlan       String?             @db.Text @map("payment_plan") // แผนการชำระเงิน
-  translatedPaymentPlans Json?          @map("translated_payment_plans") // แผนการชำระเงินในหลายภาษา
-  
+  description            String  @db.Text // คำอธิบายภาษาอังกฤษ
+  translatedTitles       Json?   @map("translated_titles") // หัวข้อในหลายภาษา (JSON format: {"th": "...", "zh": "...", "ru": "..."})
+  translatedDescriptions Json?   @map("translated_descriptions") // คำอธิบายในหลายภาษา (JSON format: {"th": "...", "zh": "...", "ru": "..."})
+  paymentPlan            String? @map("payment_plan") @db.Text // แผนการชำระเงิน
+  translatedPaymentPlans Json?   @map("translated_payment_plans") // แผนการชำระเงินในหลายภาษา
+
   // ข้อมูลติดต่อและโซเชียลมีเดีย
-  socialMedia       Json?               @map("social_media") // ข้อมูลโซเชียลมีเดีย (JSON format: {"youtubeUrl": "...", "tiktokUrl": "..."})
-  contactInfo       Json?               @map("contact_info") // ข้อมูลติดต่อ (JSON format: {"phone": "...", "email": "...", "lineId": "..."})
-  
+  socialMedia Json? @map("social_media") // ข้อมูลโซเชียลมีเดีย (JSON format: {"youtubeUrl": "...", "tiktokUrl": "..."})
+  contactInfo Json? @map("contact_info") // ข้อมูลติดต่อ (JSON format: {"phone": "...", "email": "...", "lineId": "..."})
+
   // ข้อมูลเพิ่มเติม
-  status            String              @default("ACTIVE") // สถานะทรัพย์สิน
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  userId            Int                 @map("user_id") // ผู้สร้างข้อมูล
-  user              User                @relation(fields: [userId], references: [id])
-  
+  status    String   @default("ACTIVE") // สถานะทรัพย์สิน
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  userId    Int      @map("user_id") // ผู้สร้างข้อมูล
+  user      User     @relation(fields: [userId], references: [id])
+
   // Relations
-  images            PropertyImage[]
-  features          PropertyFeature[]
-  amenities         PropertyAmenity[]
-  facilities        PropertyFacility[]
-  views             PropertyView[]
-  highlights        PropertyHighlight[]
-  labels            PropertyLabel[]
-  nearbyPlaces      PropertyNearby[]
-  listings          PropertyListing[]   // สามารถมีได้ทั้งประกาศขายและเช่า (one-to-many)
-  unitPlans         UnitPlan[]          // แผนผังยูนิต
-  
+  images       PropertyImage[]
+  features     PropertyFeature[]
+  amenities    PropertyAmenity[]
+  facilities   PropertyFacility[]
+  views        PropertyView[]
+  highlights   PropertyHighlight[]
+  labels       PropertyLabel[]
+  nearbyPlaces PropertyNearby[]
+  listings     PropertyListing[]
+  floorPlans   FloorPlan[] // แผนผังห้อง/ที่ดิน
+  unitPlans    UnitPlan[] // แผนผังยูนิต
+  contacts     Message[]
+
   @@map("properties")
+}
+
+// Message model - สำหรับการติดต่อจากผู้สนใจ
+model Message {
+  id         Int           @id @default(autoincrement())
+  name       String
+  email      String? // ปรับให้เป็น optional
+  phone      String // ปรับให้เป็น required
+  message    String        @db.Text
+  propertyId Int           @map("property_id") // ปรับให้เป็น required
+  property   Property      @relation(fields: [propertyId], references: [id]) // เพิ่ม relation กับ Property
+  status     ContactStatus @default(NEW)
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+
+  @@map("messages")
 }
 
 // PropertyListing model - สำหรับการฝากขาย/เช่า (แยกออกจาก Property เพื่อให้ Property เดียวกันสามารถมีได้ทั้งประกาศขายและเช่า)
 model PropertyListing {
-  id                Int                 @id @default(autoincrement())
-  listingType       ListingType         @map("listing_type") // ประเภทการฝาก (ขาย/เช่า)
-  status            ListingStatus       @default(ACTIVE)
-  price             Float               // ราคา
-  pricePerSqm       Float?              @map("price_per_sqm") // ราคาต่อตารางเมตร
-  promotionalPrice  Float?              @map("promotional_price") // ราคาโปรโมชั่น
-  currency          Currency            @default(THB)
-  minimumStay       Int?                @map("minimum_stay") // ระยะเวลาขั้นต่ำในการเช่า (เดือน) - สำหรับเช่าเท่านั้น
-  availableFrom     DateTime?           @map("available_from") // วันที่พร้อมเข้าอยู่
-  privateNote       String?             @db.Text @map("private_note") // บันทึกส่วนตัว
-  youtubeUrl        String?             @map("youtube_url") // URL วิดีโอ YouTube
-  tiktokUrl         String?             @map("tiktok_url") // URL วิดีโอ TikTok
-  
+  id               Int           @id @default(autoincrement())
+  listingType      ListingType   @map("listing_type") // ประเภทการฝาก (ขาย/เช่า)
+  status           ListingStatus @default(ACTIVE)
+  price            Float // ราคา
+  pricePerSqm      Float?        @map("price_per_sqm") // ราคาต่อตารางเมตร
+  promotionalPrice Float?        @map("promotional_price") // ราคาโปรโมชั่น
+  rentalPrice      Float?        @map("rental_price") // ราคาเช่ารายเดือน
+  shortTerm3Months Float?        @map("short_term_3_months") // ราคาเช่า 3 เดือน
+  shortTerm6Months Float?        @map("short_term_6_months") // ราคาเช่า 6 เดือน
+  shortTerm1Year   Float?        @map("short_term_1_year") // ราคาเช่า 1 ปี
+  currency         Currency      @default(THB)
+  minimumStay      Int?          @map("minimum_stay") // ระยะเวลาขั้นต่ำในการเช่า (เดือน) - สำหรับเช่าเท่านั้น
+  availableFrom    DateTime?     @map("available_from") // วันที่พร้อมเข้าอยู่
+  privateNote      String?       @map("private_note") @db.Text // บันทึกส่วนตัว
+  youtubeUrl       String?       @map("youtube_url") // URL วิดีโอ YouTube
+  tiktokUrl        String?       @map("tiktok_url") // URL วิดีโอ TikTok
+
   // Co-Agent settings
-  allowCoAgent      Boolean             @default(false) @map("allow_co_agent") // อนุญาตให้มีนายหน้าร่วม
-  commissionType    CommissionType?     @map("commission_type") // ประเภทค่าคอมมิชชั่น (เปอร์เซ็นต์หรือจำนวนเงิน)
-  commissionPercent Float?              @map("commission_percent") // เปอร์เซ็นต์ค่าคอมมิชชั่น
-  commissionAmount  Float?              @map("commission_amount") // จำนวนเงินค่าคอมมิชชั่น
-  commissionCurrency Currency            @default(THB) @map("commission_currency") // สกุลเงินค่าคอมมิชชั่น
-  
+  allowCoAgent       Boolean         @default(false) @map("allow_co_agent") // อนุญาตให้มีนายหน้าร่วม
+  commissionType     CommissionType? @map("commission_type") // ประเภทค่าคอมมิชชั่น (เปอร์เซ็นต์หรือจำนวนเงิน)
+  commissionPercent  Float?          @map("commission_percent") // เปอร์เซ็นต์ค่าคอมมิชชั่น
+  commissionAmount   Float?          @map("commission_amount") // จำนวนเงินค่าคอมมิชชั่น
+  commissionCurrency Currency        @default(THB) @map("commission_currency") // สกุลเงินค่าคอมมิชชั่น
+
   // Contact information
-  contactName       String?             @map("contact_name") // ชื่อผู้ติดต่อ
-  contactPhone      String?             @map("contact_phone") // เบอร์โทรหลัก
-  contactPhoneAlt   String?             @map("contact_phone_alt") // เบอร์โทรสำรอง
-  contactEmail      String?             @map("contact_email") // อีเมล
-  contactLineId     String?             @map("contact_line_id") // LINE ID
-  contactWechatId   String?             @map("contact_wechat_id") // WeChat ID
-  contactWhatsapp   String?             @map("contact_whatsapp") // WhatsApp
-  contactFacebook   String?             @map("contact_facebook") // Facebook
-  contactInstagram  String?             @map("contact_instagram") // Instagram
-  useProfileContact Boolean             @default(false) @map("use_profile_contact") // ใช้ข้อมูลติดต่อจากโปรไฟล์
-  
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  
+  contactName       String? @map("contact_name") // ชื่อผู้ติดต่อ
+  contactPhone      String? @map("contact_phone") // เบอร์โทรหลัก
+  contactPhoneAlt   String? @map("contact_phone_alt") // เบอร์โทรสำรอง
+  contactEmail      String? @map("contact_email") // อีเมล
+  contactLineId     String? @map("contact_line_id") // LINE ID
+  contactWechatId   String? @map("contact_wechat_id") // WeChat ID
+  contactWhatsapp   String? @map("contact_whatsapp") // WhatsApp
+  contactFacebook   String? @map("contact_facebook") // Facebook
+  contactInstagram  String? @map("contact_instagram") // Instagram
+  useProfileContact Boolean @default(false) @map("use_profile_contact") // ใช้ข้อมูลติดต่อจากโปรไฟล์
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relations
-  propertyId        Int                 @map("property_id")
-  property          Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  userId            Int                 @map("user_id") // ผู้ลงประกาศ
-  user              User                @relation(fields: [userId], references: [id])
-  floorPlans        FloorPlan[]
-  
+  propertyId Int         @map("property_id")
+  property   Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  userId     Int         @map("user_id") // ผู้ลงประกาศ
+  user       User        @relation(fields: [userId], references: [id])
+  floorPlans FloorPlan[]
+
   @@map("property_listings")
 }
 
@@ -262,282 +284,156 @@ enum FurnishingType {
   FULLY_FURNISHED
 }
 
+// CurrencyRate model - สำหรับจัดการอัตราแลกเปลี่ยนสกุลเงิน
+model CurrencyRate {
+  currency  Currency @id // รหัสสกุลเงิน (ใช้ enum Currency ที่มีอยู่แล้ว)
+  rate      Decimal  @db.Decimal(15, 6) // อัตราแลกเปลี่ยนเทียบกับ THB (THB = 1.0)
+  name      String // ชื่อเต็มของสกุลเงิน เช่น BATH, US DOLLAR
+  isBase    Boolean  @default(false) @map("is_base") // true สำหรับ THB
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("currency_rates")
+}
+
 // Property Image model
 model PropertyImage {
-  id                Int                 @id @default(autoincrement())
-  url               String
-  isFeatured        Boolean             @default(false) @map("is_featured")
-  sortOrder         Int                 @default(0) @map("sort_order")
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  propertyId        Int                 @map("property_id")
-  property          Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  
+  id         Int      @id @default(autoincrement())
+  url        String
+  isFeatured Boolean  @default(false) @map("is_featured")
+  sortOrder  Int      @default(0) @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  propertyId Int      @map("property_id")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
   @@map("property_images")
 }
 
 // Floor Plan model - แผนผังห้อง/ที่ดิน
 model FloorPlan {
-  id                Int                 @id @default(autoincrement())
-  url               String              // URL ของรูปภาพแผนผัง
-  title             String?             // ชื่อแผนผัง
-  description       String?             @db.Text // คำอธิบายแผนผัง
-  sortOrder         Int                 @default(0) @map("sort_order") // ลำดับการแสดงผล
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  
-  // Relations
-  listingId         Int                 @map("listing_id")
-  listing           PropertyListing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  
+  id                Int              @id @default(autoincrement())
+  url               String // URL ของรูปภาพแผนผัง
+  title             String? // ชื่อแผนผัง
+  description       String?          @db.Text // คำอธิบายแผนผัง
+  sortOrder         Int              @default(0) @map("sort_order") // ลำดับการแสดงผล
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  propertyId        Int              @map("property_id") // รหัสทรัพย์สินที่เกี่ยวข้อง
+  property          Property         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  PropertyListing   PropertyListing? @relation(fields: [propertyListingId], references: [id])
+  propertyListingId Int?
+
   @@map("floor_plans")
 }
 
 // Unit Plan model - แผนผังยูนิต (สำหรับโครงการที่มีหลายยูนิต)
 model UnitPlan {
-  id                Int                 @id @default(autoincrement())
-  url               String              // URL ของรูปภาพแผนผังยูนิต
-  title             String?             // ชื่อแผนผังยูนิต
-  unitType          String?             // ประเภทยูนิต (เช่น 1 Bed Plus, Duplex, Penthouse)
-  area              Float?              // พื้นที่ (ตร.ม.)
-  bedrooms          Int?                // จำนวนห้องนอน
-  bathrooms         Int?                // จำนวนห้องน้ำ
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  propertyId        Int                 @map("property_id")
-  property          Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  
+  id         Int      @id @default(autoincrement())
+  url        String // URL ของรูปภาพแผนผังยูนิต
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  propertyId Int      @map("property_id")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
   @@map("unit_plans")
 }
 
 // Property Feature model - คุณสมบัติพื้นฐานของทรัพย์สิน
 model PropertyFeature {
-  id                Int                 @id @default(autoincrement())
-  name              String
-  value             String?
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  propertyId        Int                 @map("property_id")
-  property          Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  
+  id          Int      @id @default(autoincrement())
+  featureType String? // ประเภทคุณสมบัติ (เช่น Air Conditioning, Balcony, etc.)
+  active      Boolean  @default(false)
+  path        String? // เส้นทางรูปภาพ (ถ้ามี)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  propertyId  Int      @map("property_id")
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
   @@map("property_features")
 }
 
 // Property Amenity model - สิ่งอำนวยความสะดวกภายในที่พัก
 model PropertyAmenity {
-  id                Int                 @id @default(autoincrement())
-  amenityType       AmenityType
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  propertyId        Int                 @map("property_id")
-  property          Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  
+  id          Int      @id @default(autoincrement())
+  amenityType String?
+  active      Boolean  @default(false) // ใช้งานได้หรือไม่
+  path        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  propertyId  Int      @map("property_id")
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
   @@map("property_amenities")
 }
 
-enum AmenityType {
-  AIR_CONDITIONER
-  BBQ
-  DRYER_MACHINE
-  HAIR_DRYER
-  KARAOKE_BOX
-  KITCHENWARE
-  MICRO_WAVE
-  OVEN
-  PRIVATE_LIFT
-  REFRIGERATOR
-  TV
-  WARDROBE
-  WASHING_MACHINE
-  WATER_HEATER
-  WIFI
-  BALCONY
-  GARDEN
-  PARKING
-  POOL
-  SECURITY
-  FITNESS
-  PET_FRIENDLY
-}
-
-// Property Facility model - สิ่งอำนวยความสะดวกส่วนกลาง
+// Property Facility model - สิ่งอำนวยความสะดวกของโครงการ
 model PropertyFacility {
-  id                Int                 @id @default(autoincrement())
-  facilityType      FacilityType
-  facilityCategory  FacilityCategory
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  propertyId        Int                 @map("property_id")
-  property          Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  
+  id           Int      @id @default(autoincrement())
+  facilityType String?
+  active       Boolean  @default(false) // ใช้งานได้หรือไม่
+  path         String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  propertyId   Int      @map("property_id")
+  property     Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
   @@map("property_facilities")
-}
-
-enum FacilityCategory {
-  FITNESS_SPORTS
-  COMMON_AREAS
-  POOLS_SPA_RELAXATION
-  DINING_ENTERTAINMENT_LEISURE
-  OTHER
-}
-
-enum FacilityType {
-  // Fitness & Sports
-  BASKETBALL_COURT
-  FITNESS
-  GOLF_SIMULATOR
-  JOGGING_TRACK
-  SQUASH_COURT
-  TENNIS_COURT
-  YOGA_ROOM
-  
-  // Common Areas
-  GREEN_AREA
-  LIBRARY
-  LOBBY
-  MEETING_ROOM
-  SKY_GARDEN
-  WORKING_SPACE
-  
-  // Pools, Spa & Relaxation
-  KIDS_POOL
-  ONSEN
-  SAUNA
-  SKY_POOL
-  SPA
-  SALON
-  SWIMMING_POOL
-  
-  // Dining, Entertainment & Leisure
-  BAR
-  CLUBHOUSE
-  GAMEROOM
-  KARAOKE_ROOM
-  MINI_THEATER
-  POOL_TABLE
-  RESTAURANT
-  SKY_BAR
-  
-  // Other
-  SECURITY_24HR
-  CCTV
-  CONCIERGE_SERVICES
-  EV_CHARGER
-  HIGH_SPEED_LIFT
-  KIDS_CLUB
 }
 
 // Property View model - วิวของทรัพย์สิน
 model PropertyView {
-  id                Int                 @id @default(autoincrement())
-  viewType          ViewType
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  propertyId        Int                 @map("property_id")
-  property          Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  
-  @@map("property_views")
-}
+  id         Int      @id @default(autoincrement())
+  viewType   String?
+  active     Boolean  @default(false) // ใช้งานได้หรือไม่
+  path       String? // เส้นทางรูปภาพ (ถ้ามี)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  propertyId Int      @map("property_id")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
-enum ViewType {
-  SEA_VIEW
-  CITY_VIEW
-  GARDEN_VIEW
-  LAKE_VIEW
-  MOUNTAIN_VIEW
-  POOL_VIEW
+  @@map("property_views")
 }
 
 // Property Highlight model - จุดเด่นของทรัพย์สิน
 model PropertyHighlight {
-  id                Int                 @id @default(autoincrement())
-  highlightType     HighlightType
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  propertyId        Int                 @map("property_id")
-  property          Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  
-  @@map("property_highlights")
-}
+  id            Int      @id @default(autoincrement())
+  highlightType String?
+  active        Boolean  @default(false) // ใช้งานได้หรือไม่
+  path          String? // เส้นทางรูปภาพ (ถ้ามี)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  propertyId    Int      @map("property_id")
+  property      Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
-enum HighlightType {
-  // Room Types
-  DUPLEX
-  PENTHOUSE
-  ONE_BED_PLUS
-  DUPLEX_PENTHOUSE
-  
-  // Highlights
-  BRAND_NEW_PROPERTY
-  PETS_ALLOWED
-  COMPANY_REGISTRATION
-  RENT_TO_OWN
-  NPA_ASSETS
-  FOREIGNER_QUOTA
-  SALE_DOWN
+  @@map("property_highlights")
 }
 
 // Property Label model - ป้ายกำกับทรัพย์สิน
 model PropertyLabel {
-  id                Int                 @id @default(autoincrement())
-  labelType         LabelType
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  propertyId        Int                 @map("property_id")
-  property          Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  
-  @@map("property_labels")
-}
+  id         Int      @id @default(autoincrement())
+  labelType  String?
+  active     Boolean  @default(false) // ใช้งานได้หรือไม่
+  path       String? // เส้นทางรูปภาพ (ถ้ามี)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  propertyId Int      @map("property_id")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
-enum LabelType {
-  NEW_DEVELOPMENT
-  NEW_LISTING
-  REDUCE_PRICE
-  RESALE
-  UNDER_CONSTRUCTION
-  HOT_OFFER
-  RENTED
-  SOLD
+  @@map("property_labels")
 }
 
 // Property Nearby model - สถานที่ใกล้เคียง
 model PropertyNearby {
-  id                Int                 @id @default(autoincrement())
-  nearbyType        NearbyType
-  distance          Float?              // ระยะทาง (กิโลเมตร)
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  propertyId        Int                 @map("property_id")
-  property          Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  
+  id         Int      @id @default(autoincrement())
+  nearbyType String?
+  active     Boolean  @default(false)
+  path       String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  propertyId Int      @map("property_id")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
   @@map("property_nearby")
-}
-
-enum NearbyType {
-  NEAR_PARK
-  NEAR_MALL
-  NEAR_TRAIN_STATION
-  NEAR_TRANSPORTATION
-  NEAR_HOSPITAL
-  NEAR_AIRPORT
-  NEAR_BEACH
-  NEAR_MARKET
-  NEAR_SCHOOL
-}
-
-// Contact model - สำหรับการติดต่อจากผู้สนใจ
-model Contact {
-  id                Int                 @id @default(autoincrement())
-  name              String
-  email             String
-  phone             String?
-  message           String              @db.Text
-  propertyId        Int?                @map("property_id")
-  status            ContactStatus       @default(NEW)
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  
-  @@map("contacts")
 }
 
 enum ContactStatus {
@@ -549,37 +445,35 @@ enum ContactStatus {
 
 // Blog model - สำหรับบทความในเว็บไซต์
 model Blog {
-  id                Int                 @id @default(autoincrement())
-  slug              String              @unique // URL slug สำหรับบทความ
-  status            BlogStatus          @default(DRAFT)
-  viewCount         Int                 @default(0) @map("view_count") // จำนวนการเข้าชม
-  
+  id        Int        @id @default(autoincrement())
+  slug      String     @unique // URL slug สำหรับบทความ
+  status    BlogStatus @default(DRAFT)
+  viewCount Int        @default(0) @map("view_count") // จำนวนการเข้าชม
+
   // ข้อมูลหลายภาษา
-  title             String              // หัวข้อภาษาอังกฤษ (หลัก)
-  content           String              @db.LongText // เนื้อหาภาษาอังกฤษ (หลัก)
-  translatedTitles  Json?               @map("translated_titles") // หัวข้อในหลายภาษา (JSON format: {"th": "...", "zh": "...", "ru": "..."})
-  translatedContents Json?              @map("translated_contents") // เนื้อหาในหลายภาษา (JSON format: {"th": "...", "zh": "...", "ru": "..."})
-  
+  title              String // หัวข้อภาษาอังกฤษ (หลัก)
+  content            String @db.LongText // เนื้อหาภาษาอังกฤษ (หลัก)
+  translatedTitles   Json?  @map("translated_titles") // หัวข้อในหลายภาษา (JSON format: {"th": "...", "zh": "...", "ru": "..."})
+  translatedContents Json?  @map("translated_contents") // เนื้อหาในหลายภาษา (JSON format: {"th": "...", "zh": "...", "ru": "..."})
+
   // ข้อมูลเพิ่มเติม
-  featuredImage     String?             @map("featured_image") // URL รูปภาพหลัก
-  category          String?             // หมวดหมู่ (เก็บเป็น string แทน relation)
-  tags              String?             // แท็ก (เก็บเป็น string คั่นด้วย comma)
-  
+  featuredImage String? @map("featured_image") // URL รูปภาพหลัก
+  category      String? // หมวดหมู่ (เก็บเป็น string แทน relation)
+  tags          String? // แท็ก (เก็บเป็น string คั่นด้วย comma)
+
   // ข้อมูลผู้สร้างและเวลา
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  publishedAt       DateTime?           @map("published_at") // วันที่เผยแพร่
-  userId            Int                 @map("user_id") // ผู้สร้างบทความ
-  user              User                @relation(fields: [userId], references: [id])
-  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  publishedAt DateTime? @map("published_at") // วันที่เผยแพร่
+  userId      Int       @map("user_id") // ผู้สร้างบทความ
+  user        User      @relation(fields: [userId], references: [id])
+
   @@map("blogs")
 }
 
-
-
 // สถานะบทความ
 enum BlogStatus {
-  DRAFT       // ฉบับร่าง
-  PUBLISHED   // เผยแพร่แล้ว
-  ARCHIVED    // เก็บถาวร
+  DRAFT // ฉบับร่าง
+  PUBLISHED // เผยแพร่แล้ว
+  ARCHIVED // เก็บถาวร
 }

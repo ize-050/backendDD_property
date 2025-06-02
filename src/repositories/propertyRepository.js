@@ -1,4 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
+const path = require("path");
+const fs = require("fs");
 const prisma = new PrismaClient();
 
 
@@ -90,11 +92,7 @@ class PropertyRepository {
               email: true,
             },
           },
-          listings: {
-            where: {
-              status: 'ACTIVE',
-            },
-          },
+          listings: true,
         },
         orderBy: {
           [sortBy]: sortOrder,
@@ -131,8 +129,23 @@ class PropertyRepository {
       where: { id: Number(id) },
       include: {
         images: true,
-        features: true,
+        features:true,
         listings: true,
+        highlights:true,
+        facilities:true,
+        amenities:{
+           where: {
+            active: true
+          }
+        },
+        views:true,
+        nearbyPlaces:{
+          where: {
+            active: true
+          }
+        },
+        unitPlans: true,
+        floorPlans: true,
         user: {
           select: {
             id: true,
@@ -145,445 +158,304 @@ class PropertyRepository {
   }
 
   /**
-   * Create new property
+   * Create new property with transaction support
+   * @param {Object} data - Property data from frontend
+   * @returns {Promise} - Created property
    */
   async create(data) {
-    // Process features array if it exists
-    const featuresData = data.features ? 
-      Array.isArray(data.features) ? 
-        data.features.map(feature => {
-          // จำกัดความยาวของค่า value ไม่เกิน 255 ตัวอักษร
-          const truncatedValue = typeof feature === 'string' ? feature.substring(0, 255) : String(feature).substring(0, 255);
-          return {
-            name: truncatedValue,
-            value: truncatedValue
-          };
-        }) : [] 
-      : [];
-    
-    // Process amenities array if it exists
-    const amenitiesData = data.amenities ? 
-      Array.isArray(data.amenities) ? 
-        data.amenities.map(amenity => ({
-          amenityType: amenity
-        })) : [] 
-      : [];
-    
-    // Process facilities object if it exists
-    let facilitiesData = [];
-    
-    if (data.facilities) {
-      // ตรวจสอบว่าเป็น JSON string หรือไม่
-      let facilitiesObj;
-      try {
-        facilitiesObj = typeof data.facilities === 'string' ? 
-          JSON.parse(data.facilities) : data.facilities;
-      } catch (e) {
-        console.error('Error parsing facilities:', e);
-        facilitiesObj = {};
-      }
-      
-      // ถ้าเป็น array ให้ใช้ตามที่ส่งมา
-      if (Array.isArray(facilitiesObj)) {
-        facilitiesData = facilitiesObj
-          .filter(facility => facility && (facility.type || facility.facilityType) && (facility.category || facility.facilityCategory))
-          .map(facility => {
-            // ตรวจสอบว่า facilityType และ facilityCategory เป็น enum ที่ถูกต้อง
+    try {
+
+      // Return the transaction result
+      return prisma.$transaction(async (prisma) => {
+        // Process and prepare related entities data
+        let featuresData = [];
+        if (data.features) {
+          // If features is a JSON string, parse it
+          const features = typeof data.features === 'string' ? JSON.parse(data.features) : data.features;
+          
+          featuresData = Object.entries(features).map(([key, value]) => ({
+            featureType: key,
+            active: value === true || value === 'true' ? true : false
+          }));
+        }
+
+        let amenitiesData = [];
+        if (data.amenities) {
+          // If amenities is a JSON string, parse it
+          const amenities = typeof data.amenities === 'string' ? JSON.parse(data.amenities) : data.amenities;
+          
+          amenitiesData = Object.entries(amenities).map(([key, value]) => ({
+            amenityType: key,
+            active: value === true || value === 'true' ? true : false
+          }));
+        }
+
+        let facilitiesData = [];
+        if (data.facilities) {
+          const facilities = typeof data.facilities === 'string' ? JSON.parse(data.facilities) : data.facilities;
+          
+          facilitiesData = Object.entries(facilities).map(([key, value]) => ({
+            facilityType: key,
+            active: value === true || value === 'true' ? true : false
+          }));
+        }
+
+        let viewsData = [];
+        if (data.views) {
+          const views = typeof data.views === 'string' ? JSON.parse(data.views) : data.views;
+          
+          viewsData = Object.entries(views).map(([key, value]) => ({
+            viewType: key,
+            active: value === true || value === 'true' ? true : false
+          }));
+        }
+
+        let highlightsData = [];
+        if (data.highlights) {
+          const highlights = typeof data.highlights === 'string' ? JSON.parse(data.highlights) : data.highlights;
+          
+          highlightsData = Object.entries(highlights).map(([key, value]) => ({
+            highlightType: key,
+            active: value === true || value === 'true' ? true : false
+          }));
+        }
+
+        let labelsData = [];
+        if (data.labels) {
+          const labels = typeof data.labels === 'string' ? JSON.parse(data.labels) : data.labels;
+          
+          labelsData = Object.entries(labels).map(([key, value]) => ({
+            labelType: key,
+            active: value === true || value === 'true' ? true : false
+          }));
+        }
+
+        let nearbyPlacesData = [];
+        if (data.nearby) {
+          const nearby = typeof data.nearby === 'string' ? JSON.parse(data.nearby) : data.nearby;
+          
+          nearbyPlacesData = Object.entries(nearby).map(([key, value]) => ({
+            nearbyType: key,
+            active: value === true || value === 'true' ? true : false
+          }));
+        }
+
+        // Prepare property base data
+        const propertyData = {
+          // Basic property info
+          title: data.propertyTitle || data.title,
+          projectName: data.projectName,
+          propertyCode: data.propertyCode || data.propertyId,
+          referenceId: data.referenceId,
+          propertyType: Array.isArray(data.propertyType) ? data.propertyType[0] : data.propertyType,
+
+          // Address info
+          address: data.address,
+          searchAddress: data.searchAddress,
+          district: data.district,
+          subdistrict: data.subdistrict,
+          province: data.province,
+          city: data.city,
+          country: data.country || 'Thailand',
+          zipCode: data.postalCode || data.zipCode,
+          latitude: data.latitude ? parseFloat(data.latitude) : null,
+          longitude: data.longitude ? parseFloat(data.longitude) : null,
+
+          // Zone relation
+          zoneId: data.zone_id ? parseInt(data.zone_id) : undefined,
+          
+          // Area info
+          area: 10,
+          usableArea: data.usableArea ? parseFloat(data.usableArea) : null,
+          
+          // Land info
+          landSizeRai: data.landSizeRai ? parseFloat(data.landSizeRai) : null,
+          landSizeNgan: data.landSizeNgan ? parseFloat(data.landSizeNgan) : null,
+          landSizeSqWah: data.landSizeSqWah ? parseFloat(data.landSizeSqWah) : null,
+          landWidth: data.landWidth ? parseFloat(data.landWidth) : null,
+          landLength: data.landLength ? parseFloat(data.landLength) : null,
+          landShape: data.landShape,
+          landGrade: data.landGrade,
+          landAccess: data.landAccess,
+          ownershipType: data.ownershipType,
+          ownershipQuota: data.ownershipQuota,
+          
+          // Building info
+          bedrooms: data.bedrooms ? parseInt(data.bedrooms) : null,
+          bathrooms: data.bathrooms ? parseInt(data.bathrooms) : null,
+          floors: data.floors ? parseInt(data.floors) : null,
+          furnishing: data.furnishing,
+          constructionYear: data.constructionYear ? parseInt(data.constructionYear) : null,
+          communityFee: data.communityFees ? parseFloat(data.communityFees) : (data.communityFee ? parseFloat(data.communityFee) : null),
+          buildingUnit: data.buildingUnit,
+          floor: data.floor ? parseInt(data.floor) : null,
+          
+          // Multilingual content
+          description: data.description,
+          translatedTitles: data.translatedTitles || {},
+          translatedDescriptions: data.translatedDescriptions || {},
+          paymentPlan: data.paymentPlan,
+          translatedPaymentPlans: data.translatedPaymentPlans || {},
+          
+          // Contact and social media
+          socialMedia: data.socialMedia || {},
+          contactInfo: data.contactInfo || {},
+          
+          // Status and metadata
+          status: data.status || 'ACTIVE',
+
+          // User relation
+          userId:  data.userId ? parseInt(data.userId) : 1,
+        };
+
+
+
+        // Create property with all relations
+        const property = await prisma.property.create({
+          data: {
+            ...propertyData,
+            listings:{
+                create: data.listings.map(listing => ({
+                    ...listing,
+                  price : listing.price ? parseFloat(listing.price) : 0,
+                  userId:  data.userId ? parseInt(data.userId) : 1,
+                  promotionalPrice:null,
+                  status: 'ACTIVE',
+                  shortTerm3Months : listing.shortTerm3Months ? parseFloat(listing.shortTerm3Months) : null,
+                  shortTerm6Months : listing.shortTerm6Months ? parseFloat(listing.shortTerm6Months) : null,
+                  shortTerm1Year : listing.shortTerm1Year ? parseFloat(listing.shortTerm1Year) : null,
+
+                }))
+            },
+            features: featuresData.length > 0 ? {
+              create: featuresData,
+            } : undefined,
+            amenities: amenitiesData.length > 0 ? {
+              create: amenitiesData,
+            } : undefined,
+            facilities: facilitiesData.length > 0 ? {
+              create: facilitiesData,
+            } : undefined,
+            views: viewsData.length > 0 ? {
+              create: viewsData,
+            } : undefined,
+            highlights: highlightsData.length > 0 ? {
+              create: highlightsData,
+            } : undefined,
+            labels: labelsData.length > 0 ? {
+              create: labelsData,
+            } : undefined,
+            nearbyPlaces: nearbyPlacesData.length > 0 ? {
+              create: nearbyPlacesData,
+            } : undefined,
+
+          },
+          include: {
+            features: true,
+            amenities: true,
+            facilities: true,
+            views: true,
+            highlights: true,
+            labels: true,
+            nearbyPlaces: true,
+          },
+        });
+
+        // Move images to the property folder with the correct property ID
+        if (data.images && data.images.length > 0) {
+          console.log(" data.images", data.images)
+          await this.moveImagesFromTemp(property.id, data.images);
+          
+          // Now create image records with updated URLs
+          const imagesData = data.images.map((image, index) => {
+            // Update image URL to point to the correct property folder
+            const updatedUrl = image.url.replace('/properties/temp/', `/properties/${property.id}/`);
+            
             return {
-              facilityType: facility.type || facility.facilityType,
-              facilityCategory: facility.category || facility.facilityCategory
+              url: updatedUrl,
+              isFeatured: image.isFeatured || index === 0,
+              sortOrder: image.sortOrder || index,
+              propertyId: property.id
             };
           });
-      } 
-      // ถ้าเป็น object ที่มีการจัดกลุ่มตามหมวดหมู่ (รูปแบบที่ส่งมาจาก frontend)
-      else if (typeof facilitiesObj === 'object' && facilitiesObj !== null) {
-        // แปลงชื่อหมวดหมู่จาก camelCase เป็น UPPERCASE_WITH_UNDERSCORE
-        const categoryMap = {
-          'fitnessAndSports': 'FITNESS_SPORTS',
-          'commonAreas': 'COMMON_AREAS',
-          'poolsAndRelaxation': 'POOLS_SPA_RELAXATION',
-          'diningAndEntertainment': 'DINING_ENTERTAINMENT_LEISURE',
-          'other': 'OTHER'
-        };
-        
-        // แปลงชื่อ facility จาก camelCase เป็น UPPERCASE_WITH_UNDERSCORE
-        const facilityMap = {
-          // Fitness & Sports
-          'basketballCourt': 'BASKETBALL_COURT',
-          'fitness': 'FITNESS',
-          'golfSimulator': 'GOLF_SIMULATOR',
-          'joggingTrack': 'JOGGING_TRACK',
-          'squashCourt': 'SQUASH_COURT',
-          'tennisCourt': 'TENNIS_COURT',
-          'yogaRoom': 'YOGA_ROOM',
           
-          // Common Areas
-          'greenArea': 'GREEN_AREA',
-          'library': 'LIBRARY',
-          'lobby': 'LOBBY',
-          'meetingRoom': 'MEETING_ROOM',
-          'skyGarden': 'SKY_GARDEN',
-          'workingSpace': 'WORKING_SPACE',
-          
-          // Pools, Spa & Relaxation
-          'kidsPool': 'KIDS_POOL',
-          'onsen': 'ONSEN',
-          'sauna': 'SAUNA',
-          'skyPool': 'SKY_POOL',
-          'spa': 'SPA',
-          'salon': 'SALON',
-          'swimmingPool': 'SWIMMING_POOL',
-          
-          // Dining, Entertainment & Leisure
-          'bar': 'BAR',
-          'clubhouse': 'CLUBHOUSE',
-          'gameroom': 'GAMEROOM',
-          'karaokeRoom': 'KARAOKE_ROOM',
-          'miniTheater': 'MINI_THEATER',
-          'poolTable': 'POOL_TABLE',
-          'restaurant': 'RESTAURANT',
-          'skyBar': 'SKY_BAR',
-          
-          // Other
-          'security24hr': 'SECURITY_24HR',
-          'cctv': 'CCTV',
-          'conciergeServices': 'CONCIERGE_SERVICES',
-          'evCharger': 'EV_CHARGER',
-          'highSpeedLift': 'HIGH_SPEED_LIFT',
-          'kidsClub': 'KIDS_CLUB'
-        };
-        
-        // วนลูปแต่ละหมวดหมู่
-        Object.entries(facilitiesObj).forEach(([category, facilities]) => {
-          // แปลงชื่อหมวดหมู่เป็น enum ที่ถูกต้อง
-          const mappedCategory = categoryMap[category] || category.toUpperCase();
-          
-          // วนลูปแต่ละ facility ในหมวดหมู่
-          Object.entries(facilities).forEach(([facilityName, isEnabled]) => {
-            // เพิ่มเฉพาะ facility ที่ถูกเลือก (true)
-            if (isEnabled) {
-              // แปลงชื่อ facility เป็น enum ที่ถูกต้อง
-              const mappedFacilityType = facilityMap[facilityName] || facilityName.toUpperCase();
-              
-              facilitiesData.push({
-                facilityType: mappedFacilityType,
-                facilityCategory: mappedCategory
-              });
-            }
-          });
-        });
-      }
-    }
+          // Create all image records
+          if (imagesData.length > 0) {
+            await prisma.propertyImage.createMany({
+              data: imagesData
+            });
+          }
+        }
 
-    console.log(facilitiesData);
-    
-    // Process views array if it exists
-    let viewsData = [];
-    
-    if (data.views) {
-      console.log('Original views data:', data.views);
-      
-      // ตรวจสอบว่าเป็น JSON string หรือไม่
-      let viewsObj;
-      try {
-        viewsObj = typeof data.views === 'string' ? 
-          JSON.parse(data.views) : data.views;
-        console.log("Parsed viewsObj:", viewsObj);
-      } catch (e) {
-        console.error('Error parsing views:', e);
-        viewsObj = {};
-      }
-      
-      // แปลงชื่อ view จาก camelCase เป็น UPPERCASE_WITH_UNDERSCORE
-      const viewMap = {
-        'seaView': 'SEA_VIEW',
-        'cityView': 'CITY_VIEW',
-        'gardenView': 'GARDEN_VIEW',
-        'lakeView': 'LAKE_VIEW',
-        'mountainView': 'MOUNTAIN_VIEW',
-        'poolView': 'POOL_VIEW'
-      };
-      
-      // ถ้าเป็น array ให้ใช้ตามที่ส่งมา
-      if (Array.isArray(viewsObj)) {
-        viewsData = viewsObj
-          .filter(view => view) // กรองค่า null และ undefined ออกไป
-          .map(view => {
-            // แปลงชื่อ view เป็น enum ที่ถูกต้อง
-            const viewType = viewMap[view] || (typeof view === 'string' ? view.toUpperCase() : view);
-            return { viewType };
+        // Move floor plan images to the property folder with the correct property ID
+        if (data.floorPlans && data.floorPlans.length > 0) {
+          await this.moveFloorPlanImagesFromTemp(property.id, data.floorPlans);
+          
+          // Now create floor plan records with updated URLs
+          const floorPlansData = data.floorPlans.map((plan, index) => {
+            // Update plan URL to point to the correct property folder
+            const updatedUrl = plan.url.replace('/properties/temp/', `/properties/${property.id}/`);
+            
+            return {
+              url: updatedUrl,
+              title: plan.title,
+              description: plan.description,
+              sortOrder: plan.sortOrder || index,
+              propertyId: property.id
+            };
           });
-      }
-      // ถ้าเป็น object ที่มีค่าเป็น boolean (รูปแบบที่ส่งมาจาก frontend)
-      else if (typeof viewsObj === 'object' && viewsObj !== null) {
-        // ทำเป็น array ของ objects ที่มี viewType ที่ถูกต้อง
-        Object.entries(viewsObj).forEach(([viewName, isEnabled]) => {
-          // เพิ่มเฉพาะ view ที่ถูกเลือก (true)
-          if (isEnabled) {
-            // แปลงชื่อ view เป็น enum ที่ถูกต้อง
-            let viewType = viewMap[viewName] || viewName.toUpperCase();
+          
+          // Create all floor plan records
+          if (floorPlansData.length > 0) {
+            await prisma.floorPlan.createMany({
+              data: floorPlansData
+            });
+          }
+        }
+
+        // Move unit plan images to the property folder with the correct property ID
+        if (data.unitPlans && data.unitPlans.length > 0) {
+          await this.moveUnitPlanImagesFromTemp(property.id, data.unitPlans);
+          
+          // Now create unit plan records with updated URLs
+          const unitPlansData = data.unitPlans.map((plan, index) => {
+            // Update plan URL to point to the correct property folder
+            const updatedUrl = plan.url.replace('/properties/temp/', `/properties/${property.id}/`);
             
-            // ตรวจสอบว่า viewType เป็นค่าที่ถูกต้องตาม enum ใน schema.prisma
-            const validViewTypes = ['SEA_VIEW', 'CITY_VIEW', 'GARDEN_VIEW', 'LAKE_VIEW', 'MOUNTAIN_VIEW', 'POOL_VIEW'];
-            
-            if (!validViewTypes.includes(viewType)) {
-              console.warn(`Invalid viewType: ${viewType}, trying to fix...`);
-              // พยายามแก้ไข viewType ให้ถูกต้อง
-              if (viewName.includes('sea') || viewName.includes('Sea')) {
-                viewType = 'SEA_VIEW';
-              } else if (viewName.includes('city') || viewName.includes('City')) {
-                viewType = 'CITY_VIEW';
-              } else if (viewName.includes('garden') || viewName.includes('Garden')) {
-                viewType = 'GARDEN_VIEW';
-              } else if (viewName.includes('lake') || viewName.includes('Lake')) {
-                viewType = 'LAKE_VIEW';
-              } else if (viewName.includes('mountain') || viewName.includes('Mountain')) {
-                viewType = 'MOUNTAIN_VIEW';
-              } else if (viewName.includes('pool') || viewName.includes('Pool')) {
-                viewType = 'POOL_VIEW';
-              } else {
-                console.warn(`Could not fix viewType: ${viewType}, skipping...`);
-                return; // ข้ามไป
-              }
-              console.log(`Fixed viewType to: ${viewType}`);
-            }
-            
-            viewsData.push({ viewType });
+            return {
+              url: updatedUrl,
+              propertyId: property.id
+            };
+          });
+          
+          // Create all unit plan records
+          if (unitPlansData.length > 0) {
+            await prisma.unitPlan.createMany({
+              data: unitPlansData
+            });
+          }
+        }
+
+        const completeProperty = await prisma.property.findUnique({
+          where: { id: property.id },
+          include: {
+            images: true,
+            features: true,
+            amenities: true,
+            facilities: true,
+            views: true,
+            highlights: true,
+            labels: true,
+            nearbyPlaces: true,
+            unitPlans: true,
           }
         });
-      }
+        return completeProperty;
+      });
+    } catch (error) {
+      console.error('Error creating property:', error);
+      throw error;
     }
-    
-    console.log('Final viewsData:', viewsData);
-    
-    // Process highlights array if it exists
-    let highlightsData = [];
-    
-    if (data.highlights) {
-      // ตรวจสอบว่าเป็น JSON string หรือไม่
-      let highlightsObj;
-      try {
-        highlightsObj = typeof data.highlights === 'string' ? 
-          JSON.parse(data.highlights) : data.highlights;
-      } catch (e) {
-        console.error('Error parsing highlights:', e);
-        highlightsObj = [];
-      }
-      
-      // แปลงชื่อ highlight จาก camelCase เป็น UPPERCASE_WITH_UNDERSCORE
-      const highlightMap = {
-        // Room Types
-        'duplex': 'DUPLEX',
-        'penthouse': 'PENTHOUSE',
-        'oneBedPlus': 'ONE_BED_PLUS',
-        'duplexPenthouse': 'DUPLEX_PENTHOUSE',
-        
-        // Highlights
-        'brandNewProperty': 'BRAND_NEW_PROPERTY',
-        'petsAllowed': 'PETS_ALLOWED',
-        'companyRegistration': 'COMPANY_REGISTRATION',
-        'rentToOwn': 'RENT_TO_OWN',
-        'npaAssets': 'NPA_ASSETS',
-        'foreignerQuota': 'FOREIGNER_QUOTA',
-        'saleDown': 'SALE_DOWN'
-      };
-      
-      // ถ้าเป็น array ให้ใช้ตามที่ส่งมา
-      if (Array.isArray(highlightsObj)) {
-        highlightsData = highlightsObj
-          .filter(highlight => highlight) // กรองค่า null และ undefined ออกไป
-          .map(highlight => {
-            // แปลงชื่อ highlight เป็น enum ที่ถูกต้อง
-            const highlightType = highlightMap[highlight] || (typeof highlight === 'string' ? highlight.toUpperCase() : highlight);
-            return { highlightType };
-          });
-      }
-      // ถ้าเป็น object ที่มีค่าเป็น boolean (รูปแบบที่อาจส่งมาจาก frontend)
-      else if (typeof highlightsObj === 'object' && highlightsObj !== null) {
-        Object.entries(highlightsObj).forEach(([highlightName, isEnabled]) => {
-          // เพิ่มเฉพาะ highlight ที่ถูกเลือก (true)
-          if (isEnabled) {
-            // แปลงชื่อ highlight เป็น enum ที่ถูกต้อง
-            const highlightType = highlightMap[highlightName] || highlightName.toUpperCase();
-            highlightsData.push({ highlightType });
-          }
-        });
-      }
-    }
-    
-    console.log('highlightsData:', highlightsData);
-    
-    // Process labels array if it exists
-    const labelsData = data.labels ? 
-      Array.isArray(data.labels) ? 
-        data.labels.map(label => ({
-          labelType: label
-        })) : [] 
-      : [];
-    
-    // Process nearby array if it exists
-    const nearbyData = data.nearby ? 
-      Array.isArray(data.nearby) ? 
-        data.nearby.map(nearby => ({
-          nearbyType: nearby.type,
-          distance: nearby.distance
-        })) : [] 
-      : [];
-    
-    // Process images array if it exists
-    const imagesData = data.images ? 
-      Array.isArray(data.images) ? 
-        data.images.map((image, index) => ({
-          url: image.url,
-          isFeatured: image.isFeatured || index === 0,
-          sortOrder: image.sortOrder || index
-        })) : [] 
-      : [];
-    
-    // Process floor plans array if it exists
-    const floorPlansData = data.floorPlans ? 
-      Array.isArray(data.floorPlans) ? 
-        data.floorPlans.map((plan, index) => ({
-          url: plan.url,
-          title: plan.title,
-          description: plan.description,
-          sortOrder: plan.sortOrder || index
-        })) : [] 
-      : [];
-    
-    // Process unit plans array if it exists
-    const unitPlansData = data.unitPlans ? 
-      Array.isArray(data.unitPlans) ? 
-        data.unitPlans.map(plan => ({
-          url: plan.url,
-          title: plan.title,
-          unitType: plan.unitType,
-          area: plan.area,
-          bedrooms: plan.bedrooms,
-          bathrooms: plan.bathrooms
-        })) : [] 
-      : [];
-
-    return prisma.property.create({
-      data: {
-        // Basic property info
-        title: data.title,
-        projectName: data.projectName,
-        propertyCode: data.propertyCode,
-        referenceId: data.referenceId,
-        propertyType: data.propertyType,
-        
-        // Address info
-        address: data.address,
-        searchAddress: data.searchAddress,
-        district: data.district,
-        subdistrict: data.subdistrict,
-        province: data.province,
-        city: data.city,
-        country: data.country || 'Thailand',
-        zipCode: data.zipCode,
-        latitude: data.latitude ? parseFloat(data.latitude) : null,
-        longitude: data.longitude ? parseFloat(data.longitude) : null,
-        
-        // Zone relation
-        zone: data.zoneId ? {
-          connect: { id: parseInt(data.zoneId) }
-        } : undefined,
-        
-        // Area info
-        area: data.area ? parseFloat(data.area) : null,
-        usableArea: data.usableArea ? parseFloat(data.usableArea) : null,
-        
-        // Land info
-        landSizeRai: data.landSizeRai ? parseFloat(data.landSizeRai) : null,
-        landSizeNgan: data.landSizeNgan ? parseFloat(data.landSizeNgan) : null,
-        landSizeSqWah: data.landSizeSqWah ? parseFloat(data.landSizeSqWah) : null,
-        landWidth: data.landWidth ? parseFloat(data.landWidth) : null,
-        landLength: data.landLength ? parseFloat(data.landLength) : null,
-        landShape: data.landShape,
-        landGrade: data.landGrade,
-        landAccess: data.landAccess,
-        ownershipType: data.ownershipType,
-        ownershipQuota: data.ownershipQuota,
-        
-        // Building info
-        bedrooms: data.bedrooms ? parseInt(data.bedrooms) : null,
-        bathrooms: data.bathrooms ? parseInt(data.bathrooms) : null,
-        floors: data.floors ? parseInt(data.floors) : null,
-        furnishing: data.furnishing,
-        constructionYear: data.constructionYear ? parseInt(data.constructionYear) : null,
-        communityFee: data.communityFee ? parseFloat(data.communityFee) : null,
-        buildingUnit: data.buildingUnit,
-        floor: data.floor ? parseInt(data.floor) : null,
-        
-        // Multilingual content
-        description: data.description,
-        translatedTitles: data.translatedTitles,
-        translatedDescriptions: data.translatedDescriptions,
-        paymentPlan: data.paymentPlan,
-        translatedPaymentPlans: data.translatedPaymentPlans,
-        
-        // Contact and social media
-        socialMedia: data.socialMedia,
-        contactInfo: data.contactInfo,
-        
-        // Status and metadata
-        status: data.status || 'ACTIVE',
-        
-        // User relation
-        user: {
-          connect: { id: 1 },
-        },
-        
-        // Related entities
-        images: imagesData.length > 0 ? {
-          create: imagesData,
-        } : undefined,
-        
-        features: featuresData.length > 0 ? {
-          create: featuresData,
-        } : undefined,
-        
-        amenities: amenitiesData.length > 0 ? {
-          create: amenitiesData,
-        } : undefined,
-        
-        facilities: facilitiesData.length > 0 ? {
-          create: facilitiesData,
-        } : undefined,
-        
-        // views: viewsData.length > 0 ? {
-        //   create: viewsData,
-        // } : undefined,
-        
-        // highlights: highlightsData.length > 0 ? {
-        //   create: highlightsData,
-        // } : undefined,
-        
-        labels: labelsData.length > 0 ? {
-          create: labelsData,
-        } : undefined,
-        
-        // nearbyPlaces: nearbyData.length > 0 ? {
-        //   create: nearbyData,
-        // } : undefined,
-        
-        // unitPlans: unitPlansData.length > 0 ? {
-        //   create: unitPlansData,
-        // } : undefined,
-      },
-      include: {
-        images: true,
-        features: true,
-        amenities: true,
-        facilities: true,
-        views: true,
-        highlights: true,
-        labels: true,
-        nearbyPlaces: true,
-        unitPlans: true,
-      },
-    });
   }
 
   /**
@@ -670,6 +542,18 @@ class PropertyRepository {
   }
 
 
+
+  async findLatestPropertyCode() {
+    return prisma.property.findFirst({
+      orderBy: {
+        propertyCode: 'desc',
+      },
+      select: {
+        propertyCode: true,
+      },
+    });
+    }
+
   /**
    * Get random properties
    * @param {number} count - Number of properties to return
@@ -685,18 +569,8 @@ class PropertyRepository {
           id: 'asc',
         },
         include: {
-          images: {
-            where: {
-              isFeatured: true,
-            },
-            take: 1,
-          },
-          listings: {
-            where: {
-              status: 'ACTIVE',
-            },
-            take: 1,
-          },
+          images: true,
+          listings: true,
           highlights: true,
           amenities: true,
           views: true,
@@ -711,12 +585,8 @@ class PropertyRepository {
             id: 'asc',
           },
           include: {
-            images: {
-              take: 1,
-            },
-            listings: {
-              take: 1,
-            },
+            images: true,
+            listings: true,
             highlights: true,
             amenities: true,
             views: true,
@@ -817,8 +687,165 @@ class PropertyRepository {
     };
   };
 
+  async moveImagesFromTemp(propertyId, images) {
+    const fs = require('fs');
+    const path = require('path');
 
+    try {
+      console.log(`Starting to move ${images.length} images for property ${propertyId}`);
+      console.log('Images before moving:', JSON.stringify(images, null, 2));
+      
+      // Create property directory if it doesn't exist
+      const propertyDir = path.join(__dirname, '../../public/images/properties', propertyId.toString());
+      if (!fs.existsSync(propertyDir)) {
+        fs.mkdirSync(propertyDir, { recursive: true });
+      }
 
+      // Create subdirectories
+      const floorPlansDir = path.join(propertyDir, 'floor-plans');
+      if (!fs.existsSync(floorPlansDir)) {
+        fs.mkdirSync(floorPlansDir, { recursive: true });
+      }
+
+      const unitPlansDir = path.join(propertyDir, 'unit-plans');
+      if (!fs.existsSync(unitPlansDir)) {
+        fs.mkdirSync(unitPlansDir, { recursive: true });
+      }
+
+      // Process each image
+      for (const image of images) {
+        if (!image.url) continue;
+
+        // Get image path relative to /public
+        const relativePath = image.url.startsWith('/') ? image.url.substring(1) : image.url;
+        const oldPath = path.join(__dirname, '../../public', relativePath);
+
+        // Replace 'temp' with actual propertyId in URL and path
+        const newRelativePath = relativePath.replace('/properties/temp/', `/properties/${propertyId}/`);
+        const newPath = path.join(__dirname, '../../public', newRelativePath);
+
+        console.log(`Moving image from ${oldPath} to ${newPath}`);
+
+        // Move file if it exists
+        if (fs.existsSync(oldPath)) {
+          // Make sure directory exists
+          const newDir = path.dirname(newPath);
+          if (!fs.existsSync(newDir)) {
+            fs.mkdirSync(newDir, { recursive: true });
+          }
+
+          // Move the file
+          fs.renameSync(oldPath, newPath);
+          
+          // Update the URL in the image object
+          image.url = '/' + newRelativePath;
+          console.log(`Updated image URL to: ${image.url}`);
+        } else {
+          console.log(`Source file does not exist: ${oldPath}`);
+        }
+      }
+
+      console.log('Images after moving:', JSON.stringify(images, null, 2));
+      console.log(`Successfully moved images for property ${propertyId}`);
+    } catch (error) {
+      console.error('Error moving images:', error);
+      // Continue processing - don't throw error as property is already created
+    }
+  }
+
+  async moveFloorPlanImagesFromTemp(propertyId, floorPlans) {
+    const fs = require('fs');
+    const path = require('path');
+
+    try {
+      // Create property directory if it doesn't exist
+      const propertyDir = path.join(__dirname, '../../public/images/properties', propertyId.toString(), 'floor-plans');
+      if (!fs.existsSync(propertyDir)) {
+        fs.mkdirSync(propertyDir, { recursive: true });
+      }
+
+      // Process each floor plan image
+      for (const plan of floorPlans) {
+        if (!plan.url) continue;
+
+        // Get image path relative to /public
+        const relativePath = plan.url.startsWith('/') ? plan.url.substring(1) : plan.url;
+        const oldPath = path.join(__dirname, '../../public', relativePath);
+
+        // Replace 'temp' with actual propertyId in URL and path
+        const newRelativePath = relativePath.replace('/properties/temp/', `/properties/${propertyId}/`);
+        const newPath = path.join(__dirname, '../../public', newRelativePath);
+
+        // Move file if it exists
+        if (fs.existsSync(oldPath)) {
+          // Make sure directory exists
+          const newDir = path.dirname(newPath);
+          if (!fs.existsSync(newDir)) {
+            fs.mkdirSync(newDir, { recursive: true });
+          }
+
+          // Move the file
+          fs.renameSync(oldPath, newPath);
+          
+          // Update the URL in the plan object
+          plan.url = '/' + newRelativePath;
+        }
+      }
+
+      // Log success
+      console.log(`Successfully moved floor plan images for property ${propertyId}`);
+    } catch (error) {
+      console.error('Error moving floor plan images:', error);
+      // Continue processing - don't throw error as property is already created
+    }
+  }
+
+  async moveUnitPlanImagesFromTemp(propertyId, unitPlans) {
+    const fs = require('fs');
+    const path = require('path');
+
+    try {
+      // Create property directory if it doesn't exist
+      const propertyDir = path.join(__dirname, '../../public/images/properties', propertyId.toString(), 'unit-plans');
+      if (!fs.existsSync(propertyDir)) {
+        fs.mkdirSync(propertyDir, { recursive: true });
+      }
+
+      // Process each unit plan image
+      for (const plan of unitPlans) {
+        if (!plan.url) continue;
+
+        // Get image path relative to /public
+        const relativePath = plan.url.startsWith('/') ? plan.url.substring(1) : plan.url;
+        const oldPath = path.join(__dirname, '../../public', relativePath);
+
+        // Replace 'temp' with actual propertyId in URL and path
+        const newRelativePath = relativePath.replace('/properties/temp/', `/properties/${propertyId}/`);
+        const newPath = path.join(__dirname, '../../public', newRelativePath);
+
+        // Move file if it exists
+        if (fs.existsSync(oldPath)) {
+          // Make sure directory exists
+          const newDir = path.dirname(newPath);
+          if (!fs.existsSync(newDir)) {
+            fs.mkdirSync(newDir, { recursive: true });
+          }
+
+          // Move the file
+          fs.renameSync(oldPath, newPath);
+          
+          // Update the URL in the plan object
+          plan.url = '/' + newRelativePath;
+        }
+      }
+
+      // Log success
+      console.log(`Successfully moved unit plan images for property ${propertyId}`);
+    } catch (error) {
+      console.error('Error moving unit plan images:', error);
+      // Continue processing - don't throw error as property is already created
+    }
+  }
 }
 
 module.exports = new PropertyRepository();

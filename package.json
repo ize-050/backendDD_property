@@ -8,6 +8,7 @@
     "dev": "nodemon src/index.js",
     "test": "jest",
     "seed": "node prisma/seed.js"
+
   },
   "dependencies": {
     "@prisma/client": "6.3.1",

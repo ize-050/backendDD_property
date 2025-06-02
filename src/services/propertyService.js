@@ -102,16 +102,24 @@ class PropertyService {
   /**
    * Create new property
    */
-  async createProperty(propertyData, userId) {
+  async createProperty(propertyData) {
     try {
-      // Add user ID to property data
-      const data = { ...propertyData, userId };
+      // Generate property code if needed
+      if (!propertyData.propertyCode) {
+        propertyData.propertyCode = await this.generateNextPropertyCode();
+      }
 
-      return await propertyRepository.create(data);
+      // Create property
+      const newProperty = await propertyRepository.create(propertyData);
+      
+
+
+      return newProperty;
     } catch (error) {
       throw new ApiError(500, 'Error creating property', false, error.stack);
     }
   }
+
 
   /**
    * Update property
@@ -126,7 +134,7 @@ class PropertyService {
       }
 
       // Check if user is owner or admin
-      if (property.userId !== userId && req.user.role !== 'ADMIN') {
+      if (property.userId !== userId) {
         throw new ApiError(403, 'Not authorized to update this property');
       }
 
@@ -150,7 +158,7 @@ class PropertyService {
       }
 
       // Check if user is owner or admin
-      if (property.userId !== userId && req.user.role !== 'ADMIN') {
+      if (property.userId !== userId) {
         throw new ApiError(403, 'Not authorized to delete this property');
       }
 
@@ -174,7 +182,7 @@ class PropertyService {
       }
 
       // Check if user is owner or admin
-      if (property.userId !== userId && req.user.role !== 'ADMIN') {
+      if (property.userId !== userId) {
         throw new ApiError(403, 'Not authorized to add images to this property');
       }
 
@@ -201,7 +209,7 @@ class PropertyService {
       }
 
       // Check if user is owner or admin
-      if (image.property.userId !== userId && req.user.role !== 'ADMIN') {
+      if (image.property.userId !== userId) {
         throw new ApiError(403, 'Not authorized to delete this image');
       }
 
@@ -225,7 +233,7 @@ class PropertyService {
       }
 
       // Check if user is owner or admin
-      if (property.userId !== userId && req.user.role !== 'ADMIN') {
+      if (property.userId !== userId) {
         throw new ApiError(403, 'Not authorized to add features to this property');
       }
 
@@ -252,11 +260,11 @@ class PropertyService {
       }
 
       // Check if user is owner or admin
-      if (feature.property.userId !== userId && req.user.role !== 'ADMIN') {
+      if (feature.property.userId !== userId) {
         throw new ApiError(403, 'Not authorized to delete this feature');
       }
 
-      return await propertyRepository.deletePropertyFeature(propertyId, featureId);
+      return await propertyRepository.deleteFeature(featureId);
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new ApiError(500, 'Error deleting property feature', false, error.stack);
@@ -434,6 +442,40 @@ class PropertyService {
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new ApiError(500, 'Error fetching user properties', false, error.stack);
+    }
+  }
+
+  /**
+   * Generate the next property code
+   * Format: DP000001, DP000002, etc.
+   * @returns {Promise<string>} The next property code
+   */
+  async generateNextPropertyCode() {
+    try {
+      // Get the latest property sorted by propertyCode in descending order
+      const latestProperty = await propertyRepository.findLatestPropertyCode();
+      
+      // If no properties exist, start from DP000001
+      if (!latestProperty) {
+        return 'DP00001';
+      }
+      
+      // Extract the number part and increment
+      const codePrefix = 'DP';
+      const currentCode = latestProperty.propertyCode || '';
+      let numericPart = 1;
+      
+      if (currentCode.startsWith(codePrefix)) {
+        const numericString = currentCode.substring(codePrefix.length);
+        numericPart = parseInt(numericString, 10) + 1;
+      }
+      
+      // Format the new code with leading zeros (6 digits)
+      const paddedNumber = numericPart.toString().padStart(5, '0');
+      return `${codePrefix}${paddedNumber}`;
+    } catch (error) {
+      console.error('Error generating next property code:', error);
+      throw error;
     }
   }
 }

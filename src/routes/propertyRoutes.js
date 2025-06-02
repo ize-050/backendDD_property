@@ -7,6 +7,10 @@ const propertyFormValidation = require('../validations/propertyFormSchema');
 
 const router = express.Router();
 
+
+router.get('/next-property-code', authMiddleware.authenticate, propertyController.getNextPropertyCode);
+
+
 // Apply API key authentication to random properties endpoint
 router.get('/random', apiKeyAuth, propertyController.getRandomProperties);
 
@@ -57,5 +61,6 @@ router.delete('/images/:id',
   authMiddleware.authenticate, 
   propertyController.deletePropertyImage
 );
+
 
 module.exports = router;

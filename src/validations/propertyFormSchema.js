@@ -54,7 +54,7 @@ const propertyFormValidation = [
   // Area info
   body('area')
     .notEmpty().withMessage('Area is required')
-    .isFloat({ min: 0 }).withMessage('Area must be a positive number'),
+    .isString().withMessage('Area must be a positive String'),
   
   body('usableArea')
     .optional()

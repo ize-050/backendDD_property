@@ -32,12 +32,7 @@ class BlogService {
     if (!blog) {
       throw new ApiError(404, 'Blog not found');
     }
-    
-    // ตรวจสอบสิทธิ์ (เฉพาะเจ้าของบทความหรือ admin สามารถแก้ไขได้)
-    if (blog.userId !== userId && userId !== 1) { // สมมติว่า userId 1 คือ admin
-      throw new ApiError(403, 'You do not have permission to update this blog');
-    }
-    
+
     // อัปเดตบทความ
     return await blogRepository.updateBlog(id, data);
   }
@@ -50,15 +45,13 @@ class BlogService {
    */
   async deleteBlog(id, userId) {
     // ตรวจสอบว่าบทความมีอยู่หรือไม่
+
     const blog = await blogRepository.getBlogById(id);
     if (!blog) {
       throw new ApiError(404, 'Blog not found');
     }
-    
-    // ตรวจสอบสิทธิ์ (เฉพาะเจ้าของบทความหรือ admin สามารถลบได้)
-    if (blog.userId !== userId && userId !== 1) { // สมมติว่า userId 1 คือ admin
-      throw new ApiError(403, 'You do not have permission to delete this blog');
-    }
+
+
     
     // ลบบทความ
     return await blogRepository.deleteBlog(id);
