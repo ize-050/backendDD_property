@@ -25,7 +25,8 @@ class SearchService {
         province,
         search,
         sort = 'createdAt',
-        order = 'desc'
+        order = 'desc',
+        type,
       } = filters;
       
       const skip = (page - 1) * Number(limit);
@@ -36,6 +37,15 @@ class SearchService {
       // Property type filter
       if (propertyType) {
         where.propertyType = propertyType;
+      }
+
+      if(type){
+        console.log("type",type.toUpperCase())
+        where.listings = {
+          some: {
+            listingType: type.toUpperCase()
+          }
+        }
       }
       
       // Location filters
