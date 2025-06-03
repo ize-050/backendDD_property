@@ -231,7 +231,7 @@ const handleBlogImageUpload = (req, res, next) => {
     // If file was uploaded, add the URL to the request body
     if (req.file) {
       // Create URL for the uploaded image
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const baseUrl = process.env.NEXT_PUBLIC_IMAGE_URL || `${req.protocol}://${req.get('host')}`;
       const imageUrl = `${baseUrl}/images/blogs/${req.file.filename}`;
       
       // Add image URL to request body
