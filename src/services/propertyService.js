@@ -38,11 +38,11 @@ class PropertyService {
             const imageWithFullUrl = { ...image };
             
             if (image.url && image.url.startsWith('/')) {
-              imageWithFullUrl.url = `http://localhost:5001${image.url}`;
+              imageWithFullUrl.url = `${process.env.NEXT_PUBLIC_IMAGE_URL}${image.url}`;
             } else {
               const filename = `property-img-0${index + 1}.png`;
               const newUrl = `/images/properties/${propertyId}/${filename}`;
-              imageWithFullUrl.url = `http://localhost:5001${newUrl}`;
+              imageWithFullUrl.url = `${process.env.NEXT_PUBLIC_IMAGE_URL}${newUrl}`;
             }
 
             return imageWithFullUrl;
@@ -55,13 +55,13 @@ class PropertyService {
           const defaultImages = [
             {
               id: 0,
-              url: `http://localhost:5001/images/properties/${propertyId}/property-img-01.png`,
+              url: `${process.env.NEXT_PUBLIC_IMAGE_URL}/images/properties/${propertyId}/property-img-01.png`,
               isFeatured: true,
               sortOrder: 0
             },
             {
               id: 1,
-              url: `http://localhost:5001/images/properties/property-img-0${propertyId}.png`,
+              url: `${process.env.NEXT_PUBLIC_IMAGE_URL}/images/properties/property-img-0${propertyId}.png`,
               isFeatured: false,
               sortOrder: 1
             }
@@ -330,7 +330,7 @@ class PropertyService {
    * @returns {string} - Image URL for property type
    */
   getPropertyTypeImage(type) {
-    const baseUrl = 'http://localhost:5001/images/property-types/';
+    const baseUrl = `${process.env.NEXT_PUBLIC_IMAGE_URL}/images/property-types/`;
     const imageMapping = {
       CONDO: `${baseUrl}condo.jpg`,
       HOUSE: `${baseUrl}house.jpg`,
