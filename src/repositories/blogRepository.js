@@ -31,20 +31,37 @@ class BlogRepository {
     }
     
     // สร้างข้อมูล translatedTitles และ translatedContents
-
     
-    const title =  JSON.parse(data.title);
-    const content = JSON.parse(data.content);
+    // แก้ไข: ตรวจสอบว่าข้อมูลที่ได้รับมาเป็น JSON string หรือไม่
+    let translatedTitles, translatedContents;
+    
+    try {
+      // ถ้าเป็น JSON string ให้แปลงเป็น object
+      if (data.translated_titles) {
+        translatedTitles = typeof data.translated_titles === 'string' 
+          ? JSON.parse(data.translated_titles) 
+          : data.translated_titles;
+      }
+      
+      if (data.translated_contents) {
+        translatedContents = typeof data.translated_contents === 'string' 
+          ? JSON.parse(data.translated_contents)
+          : data.translated_contents;
+      }
+    } catch (error) {
+      console.error('Error parsing translations:', error);
+      throw new Error('Invalid JSON format in translations');
+    }
     
     // สร้าง Blog ใหม่
     const blog = await prisma.blog.create({
       data: {
-        title: '',
-        content: '',
+        title: data.title || '',
+        content: data.content || '',
         slug: finalSlug,
         status: 'PUBLISHED',
-        translatedTitles: title,
-        translatedContents: content,
+        translatedTitles: translatedTitles,
+        translatedContents: translatedContents,
         featuredImage: data.featuredImage,
         category: data.category || null,
         tags: data.tags || null,
