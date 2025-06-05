@@ -41,6 +41,13 @@ app.use('/images', express.static('public/images', {
   }
 }));
 
+app.use('/icons', express.static('public/images/icons', {
+  setHeaders: (res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+  }
+}));
+
 // API routes
 app.use('/api', routes);
 

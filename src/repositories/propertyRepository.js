@@ -131,18 +131,45 @@ class PropertyRepository {
         images: true,
         features:true,
         listings: true,
-        highlights:true,
-        facilities:true,
+        highlights:{
+          where: {
+            active: true
+          },
+          include:{
+            Icon: true
+          }
+        },
+        facilities:{
+          where: {
+            active: true,
+          },
+          include: {
+            Icon: true
+          },
+        },
         amenities:{
            where: {
             active: true
+          },
+          include: {
+            Icon: true
           }
         },
-        views:true,
+        views:{
+          where: {
+            active: true
+          },
+          include: {
+                Icon: true
+            }
+        },
         nearbyPlaces:{
           where: {
             active: true
-          }
+          },
+          include: {
+                Icon: true
+            }
         },
         unitPlans: true,
         floorPlans: true,
@@ -167,77 +194,89 @@ class PropertyRepository {
 
       // Return the transaction result
       return prisma.$transaction(async (prisma) => {
-        // Process and prepare related entities data
-        let featuresData = [];
-        if (data.features) {
-          // If features is a JSON string, parse it
-          const features = typeof data.features === 'string' ? JSON.parse(data.features) : data.features;
-          
-          featuresData = Object.entries(features).map(([key, value]) => ({
-            featureType: key,
-            active: value === true || value === 'true' ? true : false
-          }));
-        }
 
         let amenitiesData = [];
         if (data.amenities) {
-          // If amenities is a JSON string, parse it
+          // Parse amenities data from string if needed
           const amenities = typeof data.amenities === 'string' ? JSON.parse(data.amenities) : data.amenities;
-          
-          amenitiesData = Object.entries(amenities).map(([key, value]) => ({
-            amenityType: key,
-            active: value === true || value === 'true' ? true : false
-          }));
+            amenitiesData =  Object.keys(amenities).map(key => ({
+              amenityType: key,
+              active: amenities[key].active === true || amenities[key].active === 'true' ? true : false,
+              iconId: amenities[key].iconId || null
+            }));
+
         }
 
         let facilitiesData = [];
         if (data.facilities) {
+          // Parse facilities data from string if needed
           const facilities = typeof data.facilities === 'string' ? JSON.parse(data.facilities) : data.facilities;
+
+          // Facilities มีโครงสร้างซ้อนกัน เป็น facilities[category][key]
+          // ต้องวนลูปผ่านแต่ละ category ก่อน แล้วจึงวนลูปผ่าน key ในแต่ละ category
+          Object.keys(facilities).forEach(category => {
+            Object.keys(facilities[category]).forEach(key => {
+              facilitiesData.push({
+                facilityType: key,
+                active: facilities[category][key].active === true || facilities[category][key].active === 'true',
+                iconId: facilities[category][key].iconId || null
+              });
+            });
+          });
           
-          facilitiesData = Object.entries(facilities).map(([key, value]) => ({
-            facilityType: key,
-            active: value === true || value === 'true' ? true : false
-          }));
+          console.log("facilitiesData processed:", facilitiesData);
         }
 
+        // Parse views, highlights, nearby places and labels data
         let viewsData = [];
         if (data.views) {
           const views = typeof data.views === 'string' ? JSON.parse(data.views) : data.views;
-          
-          viewsData = Object.entries(views).map(([key, value]) => ({
+          viewsData =  Object.keys(views).map(key => ({
             viewType: key,
-            active: value === true || value === 'true' ? true : false
+            active: views[key].active === true || views[key].active === 'true' ? true : false,
+            iconId: views[key].iconId || null
           }));
         }
-
+        
         let highlightsData = [];
         if (data.highlights) {
           const highlights = typeof data.highlights === 'string' ? JSON.parse(data.highlights) : data.highlights;
           
-          highlightsData = Object.entries(highlights).map(([key, value]) => ({
-            highlightType: key,
-            active: value === true || value === 'true' ? true : false
-          }));
-        }
+          // Check if it's an array format with defined structure from frontend
+            highlightsData =  Object.keys(highlights).map(key => ({
+              highlightType: key,
+              active: highlights[key].active === true || highlights[key].active === 'true' ? true : false,
+              iconId: highlights[key].iconId || null
+            }));
 
-        let labelsData = [];
-        if (data.labels) {
-          const labels = typeof data.labels === 'string' ? JSON.parse(data.labels) : data.labels;
-          
-          labelsData = Object.entries(labels).map(([key, value]) => ({
-            labelType: key,
-            active: value === true || value === 'true' ? true : false
-          }));
-        }
+          }
+
+
 
         let nearbyPlacesData = [];
         if (data.nearby) {
           const nearby = typeof data.nearby === 'string' ? JSON.parse(data.nearby) : data.nearby;
           
-          nearbyPlacesData = Object.entries(nearby).map(([key, value]) => ({
-            nearbyType: key,
-            active: value === true || value === 'true' ? true : false
+          // Check if it's an array format with defined structure from frontend
+
+            nearbyPlacesData = Object.keys(nearby).map(key => ({
+              nearbyType: key,
+              active: nearby[key].active === true || nearby[key].active === 'true' || nearby[key].active === true ,
+              iconId: nearby[key].iconId || null
+            }));
+
+        }
+
+        let labelsData = [];
+        if (data.labels) {
+          const labels = typeof data.labels === 'string' ? JSON.parse(data.labels) : data.labels;
+          labelsData = Object.keys(labels).map(key => ({
+            labelType: key,
+            active: labels[key].active === true || labels[key].active === 'true',
+            iconId: labels[key].iconId || null
           }));
+          
+          console.log("labelsData processed:", labelsData);
         }
 
         // Prepare property base data
@@ -298,7 +337,7 @@ class PropertyRepository {
           translatedPaymentPlans: data.translatedPaymentPlans || {},
           
           // Contact and social media
-          socialMedia: data.socialMedia || {},
+          socialMedia: data.socialMedia  ||  {},
           contactInfo: data.contactInfo || {},
           
           // Status and metadata
@@ -310,7 +349,7 @@ class PropertyRepository {
 
 
 
-        // Create property with all relations
+     //   Create property with all relations
         const property = await prisma.property.create({
           data: {
             ...propertyData,
@@ -327,9 +366,6 @@ class PropertyRepository {
 
                 }))
             },
-            features: featuresData.length > 0 ? {
-              create: featuresData,
-            } : undefined,
             amenities: amenitiesData.length > 0 ? {
               create: amenitiesData,
             } : undefined,
@@ -361,16 +397,16 @@ class PropertyRepository {
           },
         });
 
-        // Move images to the property folder with the correct property ID
+      //  Move images to the property folder with the correct property ID
         if (data.images && data.images.length > 0) {
           console.log(" data.images", data.images)
           await this.moveImagesFromTemp(property.id, data.images);
-          
+
           // Now create image records with updated URLs
           const imagesData = data.images.map((image, index) => {
             // Update image URL to point to the correct property folder
             const updatedUrl = image.url.replace('/properties/temp/', `/properties/${property.id}/`);
-            
+
             return {
               url: updatedUrl,
               isFeatured: image.isFeatured || index === 0,
@@ -378,7 +414,7 @@ class PropertyRepository {
               propertyId: property.id
             };
           });
-          
+
           // Create all image records
           if (imagesData.length > 0) {
             await prisma.propertyImage.createMany({
@@ -390,12 +426,12 @@ class PropertyRepository {
         // Move floor plan images to the property folder with the correct property ID
         if (data.floorPlans && data.floorPlans.length > 0) {
           await this.moveFloorPlanImagesFromTemp(property.id, data.floorPlans);
-          
+
           // Now create floor plan records with updated URLs
           const floorPlansData = data.floorPlans.map((plan, index) => {
             // Update plan URL to point to the correct property folder
             const updatedUrl = plan.url.replace('/properties/temp/', `/properties/${property.id}/`);
-            
+
             return {
               url: updatedUrl,
               title: plan.title,
@@ -404,7 +440,7 @@ class PropertyRepository {
               propertyId: property.id
             };
           });
-          
+
           // Create all floor plan records
           if (floorPlansData.length > 0) {
             await prisma.floorPlan.createMany({
@@ -416,18 +452,18 @@ class PropertyRepository {
         // Move unit plan images to the property folder with the correct property ID
         if (data.unitPlans && data.unitPlans.length > 0) {
           await this.moveUnitPlanImagesFromTemp(property.id, data.unitPlans);
-          
+
           // Now create unit plan records with updated URLs
           const unitPlansData = data.unitPlans.map((plan, index) => {
             // Update plan URL to point to the correct property folder
             const updatedUrl = plan.url.replace('/properties/temp/', `/properties/${property.id}/`);
-            
+
             return {
               url: updatedUrl,
               propertyId: property.id
             };
           });
-          
+
           // Create all unit plan records
           if (unitPlansData.length > 0) {
             await prisma.unitPlan.createMany({

@@ -118,11 +118,12 @@ model Property {
   contactInfo Json? @map("contact_info") // ข้อมูลติดต่อ (JSON format: {"phone": "...", "email": "...", "lineId": "..."})
 
   // ข้อมูลเพิ่มเติม
-  status    String   @default("ACTIVE") // สถานะทรัพย์สิน
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  userId    Int      @map("user_id") // ผู้สร้างข้อมูล
-  user      User     @relation(fields: [userId], references: [id])
+  status    String    @default("ACTIVE") // สถานะทรัพย์สิน
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at") // วันที่ลบ (สำหรับ soft delete)
+  userId    Int       @map("user_id") // ผู้สร้างข้อมูล
+  user      User      @relation(fields: [userId], references: [id])
 
   // Relations
   images       PropertyImage[]
@@ -295,6 +296,28 @@ model CurrencyRate {
   @@map("currency_rates")
 }
 
+// Icon model - สำหรับเก็บ master icon ต่างๆในระบบ
+model Icon {
+  id         Int                 @id @default(autoincrement())
+  prefix     String // รหัสนำหน้า icon เช่น facility, property-type
+  name       String? // ชื่อ icon เช่น swimming-pool, gym
+  key        String? // ชื่อ icon เช่น swimming-pool, gym
+  iconPath   String?             @map("icon_path") // เก็บ path ของไฟล์ SVG
+  active     Boolean             @default(true) // สถานะการใช้งาน
+  createdAt  DateTime            @default(now()) @map("created_at")
+  updatedAt  DateTime            @updatedAt @map("updated_at")
+  sub_name   String?
+  facilities PropertyFacility[]
+  amenities  PropertyAmenity[]
+  views      PropertyView[]
+  highlights PropertyHighlight[]
+  labels     PropertyLabel[]
+  nearbys    PropertyNearby[]
+
+  @@unique([prefix, name])
+  @@map("icons")
+}
+
 // Property Image model
 model PropertyImage {
   id         Int      @id @default(autoincrement())
@@ -343,7 +366,6 @@ model PropertyFeature {
   id          Int      @id @default(autoincrement())
   featureType String? // ประเภทคุณสมบัติ (เช่น Air Conditioning, Balcony, etc.)
   active      Boolean  @default(false)
-  path        String? // เส้นทางรูปภาพ (ถ้ามี)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   propertyId  Int      @map("property_id")
@@ -357,11 +379,12 @@ model PropertyAmenity {
   id          Int      @id @default(autoincrement())
   amenityType String?
   active      Boolean  @default(false) // ใช้งานได้หรือไม่
-  path        String?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   propertyId  Int      @map("property_id")
   property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  Icon        Icon?    @relation(fields: [iconId], references: [id])
+  iconId      Int?
 
   @@map("property_amenities")
 }
@@ -370,8 +393,9 @@ model PropertyAmenity {
 model PropertyFacility {
   id           Int      @id @default(autoincrement())
   facilityType String?
-  active       Boolean  @default(false) // ใช้งานได้หรือไม่
-  path         String?
+  active       Boolean  @default(false) // ใช้งานได้หรือไม่\
+  iconId       Int?     @map("icon_id")
+  Icon         Icon?    @relation(fields: [iconId], references: [id])
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
   propertyId   Int      @map("property_id")
@@ -385,11 +409,12 @@ model PropertyView {
   id         Int      @id @default(autoincrement())
   viewType   String?
   active     Boolean  @default(false) // ใช้งานได้หรือไม่
-  path       String? // เส้นทางรูปภาพ (ถ้ามี)
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
   propertyId Int      @map("property_id")
   property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  Icon       Icon?    @relation(fields: [iconId], references: [id])
+  iconId     Int?
 
   @@map("property_views")
 }
@@ -399,11 +424,12 @@ model PropertyHighlight {
   id            Int      @id @default(autoincrement())
   highlightType String?
   active        Boolean  @default(false) // ใช้งานได้หรือไม่
-  path          String? // เส้นทางรูปภาพ (ถ้ามี)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
   propertyId    Int      @map("property_id")
   property      Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  Icon          Icon?    @relation(fields: [iconId], references: [id])
+  iconId        Int?
 
   @@map("property_highlights")
 }
@@ -413,11 +439,12 @@ model PropertyLabel {
   id         Int      @id @default(autoincrement())
   labelType  String?
   active     Boolean  @default(false) // ใช้งานได้หรือไม่
-  path       String? // เส้นทางรูปภาพ (ถ้ามี)
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
   propertyId Int      @map("property_id")
   property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  Icon       Icon?    @relation(fields: [iconId], references: [id])
+  iconId     Int?
 
   @@map("property_labels")
 }
@@ -427,11 +454,12 @@ model PropertyNearby {
   id         Int      @id @default(autoincrement())
   nearbyType String?
   active     Boolean  @default(false)
-  path       String?
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
   propertyId Int      @map("property_id")
   property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  Icon       Icon?    @relation(fields: [iconId], references: [id])
+  iconId     Int?
 
   @@map("property_nearby")
 }

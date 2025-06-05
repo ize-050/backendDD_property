@@ -9,6 +9,7 @@ const currencyRoutes = require('./currencyRoutes');
 const userRoutes = require('./userRoutes'); // Assuming userRoutes is defined in userRoutes.js
 const messageRoutes = require('./messageRoutes'); // เปลี่ยนจาก contactRoutes เป็น messageRoutes
 const dashboardRoutes = require('./dashboardRoutes'); // เพิ่ม dashboardRoutes
+const iconRoutes = require('./iconRoutes'); // เพิ่ม iconRoutes
 
 const router = express.Router();
 
@@ -23,6 +24,7 @@ router.use('/users', userRoutes); // Assuming userRoutes is defined in userRoute
 router.use('/currencies', currencyRoutes);
 router.use('/messages', messageRoutes); // เปลี่ยนจาก '/contacts' เป็น '/messages'
 router.use('/dashboard', dashboardRoutes); // เพิ่ม dashboard routes
+router.use('/icons', iconRoutes); // เพิ่ม icon routes
 
 // API documentation route
 router.get('/', (req, res) => {

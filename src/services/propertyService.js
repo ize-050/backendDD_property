@@ -86,13 +86,12 @@ class PropertyService {
    */
   async getPropertyById(id) {
     try {
-      const property = await propertyRepository.findById(id);
+      const properties = await propertyRepository.findById(id);
 
-      if (!property) {
+      if (!properties) {
         throw new ApiError(404, `Property with ID ${id} not found`);
       }
-
-      return property;
+      return properties;
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new ApiError(500, 'Error fetching property', false, error.stack);
