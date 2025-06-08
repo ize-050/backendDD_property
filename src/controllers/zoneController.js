@@ -83,7 +83,7 @@ class ZoneController {
    */
   async getExploreLocations(req, res, next) {
     try {
-      const { limit = 3 } = req.query;
+      const { limit = 16 } = req.query;
       const randomZones = await zoneService.getRandomZonesWithPropertyCounts(Number(limit));
       
       res.status(200).json({

@@ -132,10 +132,7 @@ class PropertyService {
         throw new ApiError(404, `Property with ID ${id} not found`);
       }
 
-      // Check if user is owner or admin
-      if (property.userId !== userId) {
-        throw new ApiError(403, 'Not authorized to update this property');
-      }
+
 
       return await propertyRepository.update(id, propertyData);
     } catch (error) {

@@ -171,6 +171,14 @@ class PropertyRepository {
                 Icon: true
             }
         },
+        labels:{
+            where: {
+                active: true
+            },
+          include:{
+              Icon:true
+          }
+        },
         unitPlans: true,
         floorPlans: true,
         user: {
@@ -193,7 +201,7 @@ class PropertyRepository {
     try {
 
       // Return the transaction result
-      return prisma.$transaction(async (prisma) => {
+      return prisma.$transaction(async (tx) => {
 
         let amenitiesData = [];
         if (data.amenities) {
@@ -350,7 +358,7 @@ class PropertyRepository {
 
 
      //   Create property with all relations
-        const property = await prisma.property.create({
+        const property = await tx.property.create({
           data: {
             ...propertyData,
             listings:{
@@ -410,14 +418,14 @@ class PropertyRepository {
             return {
               url: updatedUrl,
               isFeatured: image.isFeatured || index === 0,
-              sortOrder: image.sortOrder || index,
+              sortOrder: image.sortOrder !== undefined ? Number(image.sortOrder) : index,
               propertyId: property.id
             };
           });
 
           // Create all image records
           if (imagesData.length > 0) {
-            await prisma.propertyImage.createMany({
+            await tx.propertyImage.createMany({
               data: imagesData
             });
           }
@@ -436,14 +444,14 @@ class PropertyRepository {
               url: updatedUrl,
               title: plan.title,
               description: plan.description,
-              sortOrder: plan.sortOrder || index,
+              sortOrder: plan.sortOrder !== undefined ? Number(plan.sortOrder) : index,
               propertyId: property.id
             };
           });
 
           // Create all floor plan records
           if (floorPlansData.length > 0) {
-            await prisma.floorPlan.createMany({
+            await tx.floorPlan.createMany({
               data: floorPlansData
             });
           }
@@ -460,22 +468,22 @@ class PropertyRepository {
 
             return {
               url: updatedUrl,
-              propertyId: property.id
+              propertyId: property.id,
+              sortOrder: plan.sortOrder !== undefined ? Number(plan.sortOrder) : index,
             };
           });
 
           // Create all unit plan records
           if (unitPlansData.length > 0) {
-            await prisma.unitPlan.createMany({
+            await tx.unitPlan.createMany({
               data: unitPlansData
             });
           }
         }
 
-        const completeProperty = await prisma.property.findUnique({
+        const completeProperty = await tx.property.findUnique({
           where: { id: property.id },
           include: {
-            images: true,
             features: true,
             amenities: true,
             facilities: true,
@@ -498,29 +506,702 @@ class PropertyRepository {
    * Update property
    */
   async update(id, data) {
-    return prisma.property.update({
-      where: { id: Number(id) },
-      data: {
-        title: data.title,
-        description: data.description,
-        price: data.price,
-        address: data.address,
-        city: data.city,
-        country: data.country,
-        zipCode: data.zipCode,
-        bedrooms: data.bedrooms,
-        bathrooms: data.bathrooms,
-        area: data.area,
-        propertyType: data.propertyType,
-        listingType: data.listingType,
-        status: data.status,
-      },
-      include: {
-        images: true,
-        features: true,
-      },
-    });
+    // ข้อมูลฐานสำหรับการอัพเดทพร็อพเพอร์ตี้
+    const propertyData = {
+      // Basic property info
+      title: data.propertyTitle || data.title,
+      projectName: data.projectName,
+      propertyCode: data.propertyCode || data.propertyId,
+      referenceId: data.referenceId,
+      propertyType: Array.isArray(data.propertyType) ? data.propertyType[0] : data.propertyType,
+
+      // Address info
+      address: data.address,
+      searchAddress: data.searchAddress,
+      district: data.district,
+      subdistrict: data.subdistrict,
+      province: data.province,
+      city: data.city,
+      country: data.country || 'Thailand',
+      zipCode: data.postalCode || data.zipCode,
+      latitude: data.latitude ? parseFloat(data.latitude) : null,
+      longitude: data.longitude ? parseFloat(data.longitude) : null,
+
+      // Zone relation
+      zoneId: data.zone_id ? parseInt(data.zone_id) : undefined,
+
+      // Area info
+      area: 10, // Fixed value per your recent edit
+      usableArea: data.usableArea ? parseFloat(data.usableArea) : null,
+
+      // Land info
+      landSizeRai: data.landSizeRai ? parseFloat(data.landSizeRai) : null,
+      landSizeNgan: data.landSizeNgan ? parseFloat(data.landSizeNgan) : null,
+      landSizeSqWah: data.landSizeSqWah ? parseFloat(data.landSizeSqWah) : null,
+      landWidth: data.landWidth ? parseFloat(data.landWidth) : null,
+      landLength: data.landLength ? parseFloat(data.landLength) : null,
+      landShape: data.landShape,
+      landGrade: data.landGrade,
+      landAccess: data.landAccess,
+      ownershipType: data.ownershipType,
+      ownershipQuota: data.ownershipQuota,
+
+      // Building info
+      bedrooms: data.bedrooms ? parseInt(data.bedrooms) : null,
+      bathrooms: data.bathrooms ? parseInt(data.bathrooms) : null,
+      floors: data.floors ? parseInt(data.floors) : null,
+      furnishing: data.furnishing,
+      constructionYear: data.constructionYear ? parseInt(data.constructionYear) : null,
+      communityFee: data.communityFees ? parseFloat(data.communityFees) : (data.communityFee ? parseFloat(data.communityFee) : null),
+      buildingUnit: data.buildingUnit,
+      floor: data.floor ? parseInt(data.floor) : null,
+
+      // Multilingual content
+      description: data.description,
+      translatedTitles: data.translatedTitles || undefined,
+      translatedDescriptions: data.translatedDescriptions || undefined,
+      paymentPlan: data.paymentPlan,
+      translatedPaymentPlans: data.translatedPaymentPlans || undefined,
+
+      // Contact and social media
+      socialMedia: data.socialMedia || undefined,
+      contactInfo: data.contactInfo || undefined,
+
+      // Status and metadata
+      status: data.status || 'ACTIVE',
+      videoUrl: data.videoUrl,
+    };
+
+    try {
+
+      const updatedProperty = await prisma.$transaction(async (tx) => {
+
+        let amenitiesData = [];
+        if (data.amenities) {
+
+          // Parse amenities data from string if needed
+          const amenities = typeof data.amenities === 'string' ? JSON.parse(data.amenities) : data.amenities;
+          amenitiesData =  Object.keys(amenities).map(key => ({
+            amenityType: key,
+            active: amenities[key].active === true || amenities[key].active === 'true' ? true : false,
+            iconId: amenities[key].iconId || null
+          }));
+
+        }
+
+        let facilitiesData = [];
+        if (data.facilities) {
+          // Parse facilities data from string if needed
+          const facilities = typeof data.facilities === 'string' ? JSON.parse(data.facilities) : data.facilities;
+
+          // Facilities มีโครงสร้างซ้อนกัน เป็น facilities[category][key]
+          // ต้องวนลูปผ่านแต่ละ category ก่อน แล้วจึงวนลูปผ่าน key ในแต่ละ category
+          Object.keys(facilities).forEach(category => {
+            Object.keys(facilities[category]).forEach(key => {
+              facilitiesData.push({
+                facilityType: key,
+                active: facilities[category][key].active === true || facilities[category][key].active === 'true',
+                iconId: facilities[category][key].iconId || null
+              });
+            });
+          });
+
+        }
+
+        // Parse views, highlights, nearby places and labels data
+        let viewsData = [];
+        if (data.views) {
+          const views = typeof data.views === 'string' ? JSON.parse(data.views) : data.views;
+          viewsData =  Object.keys(views).map(key => ({
+            viewType: key,
+            active: views[key].active === true || views[key].active === 'true' ? true : false,
+            iconId: views[key].iconId || null
+          }));
+        }
+
+        let highlightsData = [];
+        if (data.highlights) {
+          const highlights = typeof data.highlights === 'string' ? JSON.parse(data.highlights) : data.highlights;
+
+          // Check if it's an array format with defined structure from frontend
+          highlightsData =  Object.keys(highlights).map(key => ({
+            highlightType: key,
+            active: highlights[key].active === true || highlights[key].active === 'true' ? true : false,
+            iconId: highlights[key].iconId || null
+          }));
+
+        }
+
+
+        let nearbyPlacesData = [];
+        if (data.nearby) {
+          const nearby = typeof data.nearby === 'string' ? JSON.parse(data.nearby) : data.nearby;
+
+          // Check if it's an array format with defined structure from frontend
+
+          nearbyPlacesData = Object.keys(nearby).map(key => ({
+            nearbyType: key,
+            active: nearby[key].active === true || nearby[key].active === 'true' || nearby[key].active === true ,
+            iconId: nearby[key].iconId || null
+          }));
+
+        }
+
+        let labelsData = [];
+        if (data.labels) {
+          const labels = typeof data.labels === 'string' ? JSON.parse(data.labels) : data.labels;
+          labelsData = Object.keys(labels).map(key => ({
+            labelType: key,
+            active: labels[key].active === true || labels[key].active === 'true' || labels[key].active === true ,
+            iconId: labels[key].iconId || null
+          }));
+
+        }
+
+        // ดึงข้อมูลพร็อพเพอร์ตี้ที่ต้องการอัพเดท
+        const property = await tx.property.findUnique({
+          where: { id: Number(id) },
+
+        });
+
+        if (!property) {
+          throw new Error('Property not found');
+        }
+
+
+        // อัพเดทข้อมูลพื้นฐานของพร็อพเพอร์ตี้
+        const updated = await tx.property.updateMany({
+          where: { id: Number(id) },
+          data: {
+            ...propertyData,
+          },
+        });
+
+        // Handle property listings - delete existing and create new ones
+        if (data.listings && Array.isArray(data.listings) && data.listings.length > 0) {
+          // Delete existing listings
+          await tx.propertyListing.deleteMany({
+            where: { propertyId: Number(id) }
+          });
+          
+          // Create new listings
+          await tx.propertyListing.createMany({
+            data: data.listings.map(listing => ({
+              ...listing,
+              price: listing.price ? parseFloat(listing.price) : 0,
+              userId: data.userId ? parseInt(data.userId) : property.userId,
+              promotionalPrice: listing.promotionalPrice ? parseFloat(listing.promotionalPrice) : null,
+              status: listing.status || 'ACTIVE',
+              shortTerm3Months: listing.shortTerm3Months ? parseFloat(listing.shortTerm3Months) : null,
+              shortTerm6Months: listing.shortTerm6Months ? parseFloat(listing.shortTerm6Months) : null,
+              shortTerm1Year: listing.shortTerm1Year ? parseFloat(listing.shortTerm1Year) : null,
+              propertyId: Number(id),
+              pricePerSqm: listing.pricePerSqm ? parseFloat(listing.pricePerSqm) : null
+            }))
+          });
+        }
+
+        if (amenitiesData.length > 0) {
+          await tx.propertyAmenity.deleteMany({
+            where: {propertyId: Number(id)}
+          });
+
+          // เพิ่ม amenities ใหม่
+
+          await tx.propertyAmenity.createMany({
+            data: amenitiesData.map(amenity => ({
+              amenityType: amenity.amenityType,
+              active: amenity.active,
+              iconId: amenity.iconId,
+              propertyId: Number(id)
+            }))
+          })
+        }
+
+
+      if(highlightsData.length > 0) {
+          await tx.propertyHighlight.deleteMany({
+            where: { propertyId: Number(id) }
+          });
+
+          // เพิ่ม highlights ใหม่
+          await tx.propertyHighlight.createMany({
+            data: highlightsData.map(highlight => ({
+              highlightType: highlight.highlightType,
+              active: highlight.active,
+              iconId: highlight.iconId,
+              propertyId: Number(id)
+            }))
+          })
+
+        }
+
+        if(nearbyPlacesData.length > 0) {
+          await tx.propertyNearby.deleteMany({
+            where: { propertyId: Number(id) }
+          });
+
+
+          await tx.propertyNearby.createMany({
+            data: nearbyPlacesData.map(nearbyPlace => ({
+              nearbyType: nearbyPlace.nearbyType,
+              active: nearbyPlace.active,
+              iconId: nearbyPlace.iconId,
+              propertyId: Number(id)
+            }))
+          })
+        }
+
+        if(viewsData.length > 0) {
+          await tx.propertyView.deleteMany({
+            where: { propertyId: Number(id) }
+          });
+
+         await tx.propertyView.createMany({
+            data: viewsData.map(view => ({
+              viewType: view.viewType,
+              active: view.active,
+              iconId: view.iconId,
+              propertyId: Number(id)
+            }))
+          })
+        }
+
+
+        if(facilitiesData.length > 0) {
+          await tx.propertyFacility.deleteMany({
+            where: { propertyId: Number(id) }
+          });
+
+
+         await tx.propertyFacility.createMany({
+            data: facilitiesData.map(facility => ({
+              facilityType: facility.facilityType,
+              active: facility.active,
+              iconId: facility.iconId,
+              propertyId: Number(id)
+            }))
+          })
+        }
+
+        if(labelsData.length > 0) {
+          await tx.propertyLabel.deleteMany({
+            where: { propertyId: Number(id) }
+          });
+
+          // เพิ่ม labels ใหม่
+          await tx.propertyLabel.createMany({
+            data: labelsData.map(label => ({
+              labelType: label.labelType,
+              active: label.active,
+              iconId: label.iconId,
+              propertyId: Number(id)
+            }))
+          })
+        }
+
+        // จัดการรูปภาพถ้ามีการแทนที่ (replacement)
+        if (data.replaceImages === true && Array.isArray(data.existingImages)) {
+          try {
+            // ดึงรูปภาพปัจจุบันทั้งหมด
+            const existingImages = await tx.propertyImage.findMany({
+              where: { propertyId: Number(id) }
+            });
+            
+            // คำนวณรูปที่ต้องลบ (รูปทั้งหมดที่ไม่อยู่ใน existingImages)
+            const imagesToDelete = existingImages
+              .filter(img => !data.existingImages.includes(img.id))
+              .map(img => img.id);
+              
+            // ลบทีละรูป
+            for (const imageId of imagesToDelete) {
+              try {
+                // ค้นหารูปภาพที่จะลบ
+                const imageToDelete = await tx.propertyImage.findUnique({
+                  where: { id: Number(imageId) }
+                });
+                
+                if (!imageToDelete) continue;
+                
+                // ลบไฟล์จากระบบ
+                if (imageToDelete.url && process.env.DELETE_FILES === 'true') {
+                  try {
+                    const fs = require('fs');
+                    const path = require('path');
+                    const filePath = path.join(process.env.UPLOAD_DIR || 'uploads', imageToDelete.url.replace(/^\//, ''));
+                    
+                    if (fs.existsSync(filePath)) {
+                      fs.unlinkSync(filePath);
+                    }
+                  } catch (fsError) {
+                    console.error(`Failed to delete image file: ${fsError.message}`);
+                  }
+                }
+                
+                // ลบข้อมูลจาก database
+                await tx.propertyImage.delete({
+                  where: { id: Number(imageId) }
+                });
+              } catch (error) {
+                console.error(`Failed to delete image ${imageId}: ${error.message}`);
+              }
+            }
+            
+            // อัพเดท metadata ของรูปเก่าที่เก็บไว้
+            if (data.existingImageMetadata) {
+              for (const imageId of Object.keys(data.existingImageMetadata)) {
+                try {
+                  const metadata = data.existingImageMetadata[imageId];
+                  await tx.propertyImage.update({
+                    where: { id: Number(imageId) },
+                    data: {
+                      isFeatured: Boolean(metadata.isFeatured) || metadata.isFeatured,
+                      sortOrder: metadata.sortOrder !== undefined ? Number(metadata.sortOrder) : undefined
+                    }
+                  });
+                } catch (error) {
+                  console.error(`Failed to update metadata for image ${imageId}: ${error.message}`);
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Error processing replacement images: ${error.message}`);
+          }
+        } else if (data.deleteImages && Array.isArray(data.deleteImages) && data.deleteImages.length > 0) {
+          // ถ้ามีการระบุ deleteImages โดยตรง ก็ใช้โค้ดเดิม
+          await Promise.all(data.deleteImages.map(async (imageId) => {
+            try {
+              // ค้นหารูปภาพที่จะลบ
+              const imageToDelete = await tx.propertyImage.findUnique({
+                where: { id: Number(imageId) }
+              });
+              
+              if (!imageToDelete) return;
+              
+              // ลบไฟล์จากระบบ
+              if (imageToDelete.url && process.env.DELETE_FILES === 'true') {
+                try {
+                  const fs = require('fs');
+                  const path = require('path');
+                  const filePath = path.join(process.env.UPLOAD_DIR || 'uploads', imageToDelete.url.replace(/^\//, ''));
+                  
+                  if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                  }
+                } catch (fsError) {
+                  console.error(`Failed to delete image file: ${fsError.message}`);
+                }
+              }
+              
+              // ลบข้อมูลจาก database
+              await tx.propertyImage.delete({
+                where: { id: Number(imageId) }
+              });
+            } catch (error) {
+              console.error(`Failed to delete image ${imageId}: ${error.message}`);
+            }
+          }));
+        }
+        
+        // จัดการ images ใหม่
+        if (data.newImages && Array.isArray(data.newImages) && data.newImages.length > 0) {
+          await Promise.all(data.newImages.map(async (image, index) => {
+            try {
+              // ตรวจสอบว่ามีข้อมูลที่จำเป็น
+              if (!image.url) return;
+              
+              // แปลงค่า sortOrder เป็น number
+              const sortOrder = image.sortOrder !== undefined ? 
+                                Number(image.sortOrder) : 
+                                index;
+              
+              console.log(`Creating new image with sortOrder: ${sortOrder}`);
+              
+              // สร้าง record ใหม่
+              await tx.propertyImage.create({
+                data: {
+                  url: image.url,
+                  isFeatured: image.isFeatured || false,
+                  sortOrder: sortOrder,
+                  propertyId: Number(id)
+                }
+              });
+            } catch (error) {
+              console.error(`Failed to add new image: ${error.message}`);
+            }
+          }));
+        }
+        
+        // จัดการ Floor Plans เช่นเดียวกับ Images
+        if (data.replaceFloorPlans === true && Array.isArray(data.existingFloorPlanIds)) {
+          try {
+            // ดึง floor plans ปัจจุบันทั้งหมด
+            const existingFloorPlans = await tx.floorPlan.findMany({
+              where: { propertyId: Number(id) }
+            });
+            
+            // คำนวณ floor plans ที่ต้องลบ
+            const plansToDelete = existingFloorPlans
+              .filter(plan => !data.existingFloorPlanIds.includes(plan.id.toString()));
+            
+            if (plansToDelete.length > 0) {
+              const planIdsToDelete = plansToDelete.map(plan => plan.id);
+              console.log('Deleting floor plans:', planIdsToDelete);
+              
+              // Delete the plans that are not in the list
+              await tx.floorPlan.deleteMany({
+                where: { 
+                  id: { in: planIdsToDelete },
+                  propertyId: Number(id)
+                }
+              });
+            }
+          } catch (error) {
+            console.error(`Error processing replacement floor plans: ${error.message}`);
+          }
+        } else if (data.deleteFloorPlans && Array.isArray(data.deleteFloorPlans) && data.deleteFloorPlans.length > 0) {
+          // ถ้ามีการระบุ deleteFloorPlans โดยตรง ก็ใช้โค้ดเดิม
+          await Promise.all(data.deleteFloorPlans.map(async (planId) => {
+            try {
+              // ค้นหาแผนผังที่จะลบ
+              const planToDelete = await tx.floorPlan.findUnique({
+                where: { id: Number(planId) }
+              });
+              
+              if (!planToDelete) return;
+              
+              // ลบไฟล์จากระบบ
+              if (planToDelete.url && process.env.DELETE_FILES === 'true') {
+                try {
+                  const fs = require('fs');
+                  const path = require('path');
+                  const filePath = path.join(process.env.UPLOAD_DIR || 'uploads', planToDelete.url.replace(/^\//, ''));
+                  
+                  if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                  }
+                } catch (fsError) {
+                  console.error(`Failed to delete floor plan file: ${fsError.message}`);
+                }
+              }
+              
+              // ลบข้อมูลจาก database
+              await tx.floorPlan.delete({
+                where: { id: Number(planId) }
+              });
+            } catch (error) {
+              console.error(`Failed to delete floor plan ${planId}: ${error.message}`);
+            }
+          }));
+        }
+        
+        // จัดการ Floor Plans ใหม่
+        if (data.newFloorPlans && Array.isArray(data.newFloorPlans) && data.newFloorPlans.length > 0) {
+          await Promise.all(data.newFloorPlans.map(async (plan, index) => {
+            try {
+              // ตรวจสอบว่ามีข้อมูลที่จำเป็น
+              if (!plan.url) return;
+              
+              // แปลงค่า sortOrder เป็น number
+              const sortOrder = plan.sortOrder !== undefined ? 
+                               Number(plan.sortOrder) : 
+                               index;
+
+              // สร้าง record ใหม่
+              await tx.floorPlan.create({
+                data: {
+                  url: plan.url,
+                  title: plan.title || null,
+                  sortOrder: sortOrder,
+                  propertyId: Number(id)
+                }
+              });
+            } catch (error) {
+              console.error(`Failed to add new floor plan: ${error.message}`);
+            }
+          }));
+        }
+        
+        // จัดการ metadata ของ floor plans ที่มีอยู่แล้ว
+        if (data.existingFloorPlanMetadata && typeof data.existingFloorPlanMetadata === 'object') {
+          await Promise.all(Object.keys(data.existingFloorPlanMetadata).map(async (planId) => {
+            try {
+              const metadata = data.existingFloorPlanMetadata[planId];
+              
+              // ตรวจสอบว่า floor plan ยังมีอยู่หรือไม่
+              const planExists = await tx.floorPlan.findUnique({
+                where: { id: Number(planId) }
+              });
+              
+              if (!planExists) return;
+              
+              console.log(`Updating floor plan ${planId} metadata:`, metadata);
+              
+              // อัพเดต metadata
+              await tx.floorPlan.update({
+                where: { id: Number(planId) },
+                data: {
+                  title: metadata.title || planExists.title,
+                  sortOrder: metadata.sortOrder !== undefined ? Number(metadata.sortOrder) : planExists.sortOrder
+                }
+              });
+              
+              console.log(`Updated metadata for floor plan ${planId} successfully`);
+            } catch (error) {
+              console.error(`Failed to update floor plan metadata for ${planId}: ${error.message}`);
+            }
+          }));
+        }
+
+        // จัดการ Unit Plans เช่นเดียวกับ Floor Plans และ Images
+        if (data.replaceUnitPlans === true && Array.isArray(data.existingUnitPlanIds)) {
+          try {
+            // ดึง unit plans ปัจจุบันทั้งหมด
+            const existingUnitPlans = await tx.unitPlan.findMany({
+              where: { propertyId: Number(id) }
+            });
+            
+            // คำนวณ unit plans ที่ต้องลบ
+            const plansToDelete = existingUnitPlans
+              .filter(plan => !data.existingUnitPlanIds.includes(plan.id.toString()));
+            
+            if (plansToDelete.length > 0) {
+              const planIdsToDelete = plansToDelete.map(plan => plan.id);
+              console.log('Deleting unit plans:', planIdsToDelete);
+              
+              // Delete the plans that are not in the list
+              await tx.unitPlan.deleteMany({
+                where: { 
+                  id: { in: planIdsToDelete },
+                  propertyId: Number(id)
+                }
+              });
+            }
+          } catch (error) {
+            console.error(`Error processing replacement unit plans: ${error.message}`);
+          }
+        } else if (data.deleteUnitPlans && Array.isArray(data.deleteUnitPlans) && data.deleteUnitPlans.length > 0) {
+          // ถ้ามีการระบุ deleteUnitPlans โดยตรง ก็ใช้โค้ดเดิม
+          await Promise.all(data.deleteUnitPlans.map(async (planId) => {
+            try {
+              // ค้นหาแผนผังที่จะลบ
+              const planToDelete = await tx.unitPlan.findUnique({
+                where: { id: Number(planId) }
+              });
+              
+              if (!planToDelete) return;
+              
+              // ลบไฟล์จากระบบ
+              if (planToDelete.url && process.env.DELETE_FILES === 'true') {
+                try {
+                  const fs = require('fs');
+                  const path = require('path');
+                  const filePath = path.join(process.env.UPLOAD_DIR || 'uploads', planToDelete.url.replace(/^\//, ''));
+                  
+                  if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                  }
+                } catch (fsError) {
+                  console.error(`Failed to delete unit plan file: ${fsError.message}`);
+                }
+              }
+              
+              // ลบข้อมูลจาก database
+              await tx.unitPlan.delete({
+                where: { id: Number(planId) }
+              });
+            } catch (error) {
+              console.error(`Failed to delete unit plan ${planId}: ${error.message}`);
+            }
+          }));
+        }
+        
+        // จัดการ Unit Plans ใหม่
+        if (data.newUnitPlans && Array.isArray(data.newUnitPlans) && data.newUnitPlans.length > 0) {
+          await Promise.all(data.newUnitPlans.map(async (plan, index) => {
+            try {
+              // ตรวจสอบว่ามีข้อมูลที่จำเป็น
+              if (!plan.url) return;
+              
+              // แปลงค่า sortOrder เป็น number
+              const sortOrder = plan.sortOrder !== undefined ? 
+                               Number(plan.sortOrder) : 
+                               index;
+                               
+              console.log(`Creating new unit plan with sortOrder: ${sortOrder}`);
+              
+              // สร้าง record ใหม่
+              await tx.unitPlan.create({
+                data: {
+                  url: plan.url,
+                  sortOrder: sortOrder,
+                  propertyId: Number(id)
+                }
+              });
+            } catch (error) {
+              console.error(`Failed to add new unit plan: ${error.message}`);
+            }
+          }));
+        }
+
+        // จัดการ metadata ของ unit plans ที่มีอยู่แล้ว
+        if (data.existingUnitPlanMetadata && typeof data.existingUnitPlanMetadata === 'object') {
+          await Promise.all(Object.keys(data.existingUnitPlanMetadata).map(async (planId) => {
+            try {
+              const metadata = data.existingUnitPlanMetadata[planId];
+              
+              // ตรวจสอบว่า unit plan ยังมีอยู่หรือไม่
+              const planExists = await tx.unitPlan.findUnique({
+                where: { id: Number(planId) }
+              });
+              
+              if (!planExists) return;
+              
+              console.log(`Updating unit plan ${planId} metadata:`, metadata);
+              
+              // อัพเดต metadata
+              await tx.unitPlan.update({
+                where: { id: Number(planId) },
+                data: {
+                  title: metadata.title || planExists.title,
+                  description: metadata.description || planExists.description,
+                  sortOrder: metadata.sortOrder !== undefined ? Number(metadata.sortOrder) : planExists.sortOrder
+                }
+              });
+              
+              console.log(`Updated metadata for unit plan ${planId} successfully`);
+            } catch (error) {
+              console.error(`Failed to update unit plan metadata for ${planId}: ${error.message}`);
+            }
+          }));
+        }
+
+        // อัพเดท property หลัก
+        const updatedPropertyLast =   await tx.property.findUnique({
+          where: { id: Number(id) },
+          include: {
+            images: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              }
+            }
+          },
+        });
+        return updatedPropertyLast;
+      });
+      
+      return updatedProperty;
+    } catch (error) {
+      console.error('Transaction failed:', error);
+
+      throw error;
+    }
   }
+
+
 
   /**
    * Delete property

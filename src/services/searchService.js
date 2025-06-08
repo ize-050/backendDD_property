@@ -156,6 +156,13 @@ class SearchService {
         
         return {
           ...property,
+          zone: property.zone ? {
+            ...property.zone,
+            name_th : property.zone.nameTh,
+            name_en : property.zone.nameEn || property.zone.name,
+            name_ch : property.zone.naneCh || property.zone.name,
+            name_ru : property.zone.nameRu || property.zone.name,
+          } : null,
           images: sortedImages
         };
       });

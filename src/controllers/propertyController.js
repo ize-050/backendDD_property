@@ -186,6 +186,7 @@ class PropertyController {
         ...req.body,
         // Convert numeric fields
         bedrooms: req.body.bedrooms ? parseInt(req.body.bedrooms, 10) : undefined,
+        listings : JSON.parse(req.body.listings),
         bathrooms: req.body.bathrooms ? parseInt(req.body.bathrooms, 10) : undefined,
         area: req.body.area ? parseFloat(req.body.area) : undefined,
         price: req.body.price ? parseFloat(req.body.price) : undefined,
@@ -194,6 +195,10 @@ class PropertyController {
         shortTerm3Months: req.body.shortTerm3Months ? parseFloat(req.body.shortTerm3Months) : undefined,
         shortTerm6Months: req.body.shortTerm6Months ? parseFloat(req.body.shortTerm6Months) : undefined,
         shortTerm1Year: req.body.shortTerm1Year ? parseFloat(req.body.shortTerm1Year) : undefined,
+        replaceImages: req.body.replaceImages,
+        newImages: req.body.newImages,
+        existingImageMetadata: req.body.existingImageMetadata,
+
         
         // Parse JSON strings for various fields using the helper method
         features: parseJsonField(req.body.features),
@@ -213,6 +218,331 @@ class PropertyController {
         translatedDescriptions: parseJsonField(req.body.translatedDescriptions),
         translatedPaymentPlans: parseJsonField(req.body.translatedPaymentPlans),
       };
+
+      // Process images, floor plans และ unit plans
+      // =======================================
+
+      // 1. IMAGES: Process existing and new images
+      if (req.files && req.files.images && req.files.images.length > 0) {
+        // Handle new image uploads
+        const imageFiles = Array.isArray(req.files.images) ? req.files.images : [req.files.images];
+
+        // Process image metadata from formdata
+        const imageMetadata = {};
+        Object.keys(req.body).forEach(key => {
+          if (key.includes('imageMetadata')) {
+            const matches = key.match(/imageMetadata\[([^\]]+)\]\[([^\]]+)\]/);
+            console.log(`Processing key: ${key}, matches:`, matches);
+            if (matches && matches.length === 3) {
+              const [, tempId, field] = matches;
+              imageMetadata[tempId] = imageMetadata[tempId] || {};
+              imageMetadata[tempId][field] = req.body[key];
+            }
+          }
+        });
+
+
+        // Add new images with their metadata
+        propertyData.newImages = imageFiles.map((file, index) => {
+          // Try multiple ways to find the tempId
+          let tempId = null;
+
+          // Method 1: Extract from fieldname if available
+          if (file.fieldname.includes('[') && file.fieldname.includes(']')) {
+            tempId = file.fieldname.split('[').pop().split(']')[0];
+          }
+
+          if (!tempId) {
+            tempId = file.md5 || file.filename || `temp_${index}`;
+          }
+
+          const metadata = imageMetadata[tempId] || {};
+
+          console.log(`Processing file: ${file.filename}, tempId: ${tempId}, metadata:`, metadata);
+
+          return {
+            url: `/images/properties/${req.params.id}/${file.filename}`,
+            isFeatured: metadata.isFeatured === 'true',
+            sortOrder: metadata.sortOrder ? parseInt(metadata.sortOrder, 10) : index
+          };
+        });
+      }
+
+      // 2. Handle existing image metadata updates
+      console.log("All keys in req.body:", Object.keys(req.body));
+      const existingImageMetadata = {};
+      Object.keys(req.body).forEach(key => {
+        if (key.includes('existingImageMetadata')) {
+          const matches = key.match(/existingImageMetadata\[([^\]]+)\]\[([^\]]+)\]/);
+          if (matches && matches.length === 3) {
+            const [, imageId, field] = matches;
+            existingImageMetadata[imageId] = existingImageMetadata[imageId] || {};
+            existingImageMetadata[imageId][field] = req.body[key];
+          }
+        }
+      });
+
+        console.log('Existing image metadata:', JSON.stringify(existingImageMetadata, null, 2));
+
+      if (Object.keys(existingImageMetadata).length > 0) {
+        propertyData.existingImageMetadata = {};
+
+        Object.keys(existingImageMetadata).forEach(imageId => {
+          const metadata = existingImageMetadata[imageId];
+          propertyData.existingImageMetadata[imageId] = {
+            isFeatured: metadata.isFeatured === 'true',
+            sortOrder: metadata.sortOrder ? parseInt(metadata.sortOrder, 10) : 0
+          };
+        });
+      }
+
+      // 3. Handle replacing vs keeping existing images
+      if (req.body.replaceImages === 'true') {
+        const existingImageIds = req.body['existingImages'];
+
+        if (existingImageIds) {
+          // มีการระบุรูปที่ต้องการเก็บไว้
+          propertyData.replaceImages = true;
+          propertyData.existingImages = Array.isArray(existingImageIds)
+            ? existingImageIds.map(id => Number(id))
+            : [Number(existingImageIds)];
+        } else if (req.files && req.files.images && req.files.images.length > 0) {
+          // ไม่มีการระบุรูปที่ต้องการเก็บไว้ แต่มีการอัพโหลดใหม่ (ลบรูปเก่า)
+          propertyData.replaceImages = true;
+          propertyData.existingImages = [];
+        }
+        // ไม่มีทั้งรูปเก่าที่ต้องการเก็บไว้และรูปใหม่ = ไม่ต้องทำอะไรกับรูปเก่า (ไม่ต้อง set replaceImages = true)
+      }
+
+      if (req.files) {
+        // Check both possible field names (floorPlanImages and floorPlans)
+        const floorPlanFiles = [];
+
+        if (req.files.floorPlanImages && req.files.floorPlanImages.length > 0) {
+          const files = Array.isArray(req.files.floorPlanImages) ? req.files.floorPlanImages : [req.files.floorPlanImages];
+          floorPlanFiles.push(...files);
+        }
+        if (req.files.floorPlans && req.files.floorPlans.length > 0) {
+          const files = Array.isArray(req.files.floorPlans) ? req.files.floorPlans : [req.files.floorPlans];
+          floorPlanFiles.push(...files);
+        }
+
+        if (floorPlanFiles.length > 0) {
+          console.log(`Found ${floorPlanFiles.length} floor plan files`);
+
+          const floorPlanMetadata = {};
+
+          // Extract from imageMetadata
+          Object.keys(req.body).forEach(key => {
+            if (key.includes('floorPlanMetadata')) {
+              const matches = key.match(/floorPlanMetadata\[([^\]]+)\]\[([^\]]+)\]/);
+              if (matches && matches.length === 3) {
+                const [, tempId, field] = matches;
+                floorPlanMetadata[tempId] = floorPlanMetadata[tempId] || {};
+                floorPlanMetadata[tempId][field] = req.body[key];
+              }
+            }
+          });
+
+          propertyData.newFloorPlans = floorPlanFiles.map((file, index) => {
+            // Try multiple ways to find the tempId
+            let tempId = null;
+
+            // Method 1: Extract from fieldname if available
+            if (file.fieldname.includes('[') && file.fieldname.includes(']')) {
+              tempId = file.fieldname.split('[').pop().split(']')[0];
+            }
+
+            // Method 2: Use file properties
+            if (!tempId) {
+              tempId = file.md5 || file.filename || file.originalname || `temp_${index}`;
+            }
+
+            const metadata = floorPlanMetadata[tempId] || {};
+
+            console.log(`Processing floor plan: ${file.filename}, tempId: ${tempId}, metadata:`, metadata);
+
+            return {
+              url: `/images/properties/${req.params.id}/floor-plans/${file.filename}`,
+              title: metadata.title || file.originalname || null,
+              description: metadata.description || null,
+              sortOrder: metadata.sortOrder ? parseInt(metadata.sortOrder, 10) : index
+            };
+          });
+        }
+      }
+
+      // 5. Handle replacing vs keeping existing floor plans
+      if (req.body.replaceFloorPlans === 'true') {
+        const existingFloorPlanIds = req.body['existingFloorPlans'];
+
+        // Process metadata for existing floor plans
+        const existingFloorPlanMetadata = {};
+        Object.keys(req.body).forEach(key => {
+          if (key.includes('existingFloorPlanMetadata')) {
+            const matches = key.match(/existingFloorPlanMetadata\[([^\]]+)\]\[([^\]]+)\]/);
+            if (matches && matches.length === 3) {
+              const [, planId, field] = matches;
+
+              // Check if this ID is in the existingFloorPlans array
+              if (existingFloorPlanIds) {
+                const idsArray = Array.isArray(existingFloorPlanIds)
+                  ? existingFloorPlanIds
+                  : [existingFloorPlanIds];
+
+                if (idsArray.includes(planId)) {
+                  existingFloorPlanMetadata[planId] = existingFloorPlanMetadata[planId] || {};
+                  existingFloorPlanMetadata[planId][field] = req.body[key];
+                }
+              }
+            }
+          }
+        });
+
+        if (Object.keys(existingFloorPlanMetadata).length > 0) {
+          propertyData.existingFloorPlanMetadata = {};
+
+          Object.keys(existingFloorPlanMetadata).forEach(planId => {
+            const metadata = existingFloorPlanMetadata[planId];
+            propertyData.existingFloorPlanMetadata[planId] = {
+              title: metadata.title || null,
+              description: metadata.description || null,
+              sortOrder: metadata.sortOrder ? parseInt(metadata.sortOrder, 10) : 0
+            };
+          });
+        }
+
+
+        if (existingFloorPlanIds) {
+          // มีการระบุ floor plans ที่ต้องการเก็บไว้
+          propertyData.replaceFloorPlans = true;
+
+          // แปลงให้เป็น array เสมอ
+          propertyData.existingFloorPlanIds = Array.isArray(existingFloorPlanIds)
+            ? existingFloorPlanIds
+            : [existingFloorPlanIds];
+        } else {
+          // ไม่มีการระบุ existingFloorPlans จะลบทั้งหมด
+          propertyData.replaceFloorPlans = true;
+          propertyData.existingFloorPlanIds = [];
+        }
+      }
+
+      // 6. UNIT PLANS: Process similar to floor plans
+      if (req.files) {
+        // Check for unit plan files
+        const unitPlanFiles = [];
+
+        if (req.files.unitPlanImages && req.files.unitPlanImages.length > 0) {
+          const files = Array.isArray(req.files.unitPlanImages) ? req.files.unitPlanImages : [req.files.unitPlanImages];
+          unitPlanFiles.push(...files);
+        }
+
+        if (req.files.unitPlans && req.files.unitPlans.length > 0) {
+          const files = Array.isArray(req.files.unitPlans) ? req.files.unitPlans : [req.files.unitPlans];
+          unitPlanFiles.push(...files);
+        }
+
+        if (unitPlanFiles.length > 0) {
+          console.log(`Found ${unitPlanFiles.length} unit plan files`);
+
+          // Process unit plan metadata using the same imageMetadata as regular images
+          const unitPlanMetadata = {};
+          // Extract from imageMetadata
+          Object.keys(req.body).forEach(key => {
+            if (key.includes('unitPlanMetadata')) {
+              const matches = key.match(/unitPlanMetadata\[([^\]]+)\]\[([^\]]+)\]/);
+              if (matches && matches.length === 3) {
+                const [, tempId, field] = matches;
+                unitPlanMetadata[tempId] = unitPlanMetadata[tempId] || {};
+                unitPlanMetadata[tempId][field] = req.body[key];
+              }
+            }
+          });
+
+
+          propertyData.newUnitPlans = unitPlanFiles.map((file, index) => {
+            // Try multiple ways to find the tempId
+            let tempId = null;
+
+            // Method 1: Extract from fieldname if available
+            if (file.fieldname.includes('[') && file.fieldname.includes(']')) {
+              tempId = file.fieldname.split('[').pop().split(']')[0];
+            }
+
+            // Method 2: Use file properties
+            if (!tempId) {
+              tempId = file.md5 || file.filename || file.originalname || `temp_${index}`;
+            }
+
+            const metadata = unitPlanMetadata[tempId] || {};
+
+            return {
+              url: `/images/properties/${req.params.id}/unit-plans/${file.filename}`,
+              title: metadata.title || file.originalname || null,
+              description: metadata.description || null,
+              sortOrder: metadata.sortOrder ? parseInt(metadata.sortOrder, 10) : index
+            };
+          });
+        }
+      }
+
+      // 7. Handle replacing vs keeping existing unit plans
+      if (req.body.replaceUnitPlans === 'true') {
+        const existingUnitPlanIds = req.body['existingUnitPlans'];
+
+        // Process metadata for existing unit plans
+        const existingUnitPlanMetadata = {};
+        Object.keys(req.body).forEach(key => {
+          if (key.includes('existingUnitPlanMetadata')) {
+            const matches = key.match(/existingUnitPlanMetadata\[([^\]]+)\]\[([^\]]+)\]/);
+            if (matches && matches.length === 3) {
+              const [, planId, field] = matches;
+
+              // Check if this ID is in the existingUnitPlans array
+              if (existingUnitPlanIds) {
+                const idsArray = Array.isArray(existingUnitPlanIds)
+                  ? existingUnitPlanIds
+                  : [existingUnitPlanIds];
+
+                if (idsArray.includes(planId)) {
+                  existingUnitPlanMetadata[planId] = existingUnitPlanMetadata[planId] || {};
+                  existingUnitPlanMetadata[planId][field] = req.body[key];
+                }
+              }
+            }
+          }
+        });
+
+        console.log('Existing unit plan metadata:', JSON.stringify(existingUnitPlanMetadata));
+
+        if (Object.keys(existingUnitPlanMetadata).length > 0) {
+          propertyData.existingUnitPlanMetadata = {};
+
+          Object.keys(existingUnitPlanMetadata).forEach(planId => {
+            const metadata = existingUnitPlanMetadata[planId];
+            propertyData.existingUnitPlanMetadata[planId] = {
+              title: metadata.title || null,
+              description: metadata.description || null,
+              sortOrder: metadata.sortOrder ? parseInt(metadata.sortOrder, 10) : 0
+            };
+          });
+        }
+
+        if (existingUnitPlanIds) {
+          // มีการระบุ unit plans ที่ต้องการเก็บไว้
+          propertyData.replaceUnitPlans = true;
+
+          // แปลงให้เป็น array เสมอ
+          propertyData.existingUnitPlanIds = Array.isArray(existingUnitPlanIds)
+            ? existingUnitPlanIds
+            : [existingUnitPlanIds];
+        } else {
+          // ไม่มีการระบุ existingUnitPlans จะลบทั้งหมด
+          propertyData.replaceUnitPlans = true;
+          propertyData.existingUnitPlanIds = [];
+        }
+      }
 
       const property = await propertyService.updateProperty(
         req.params.id,

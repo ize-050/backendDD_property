@@ -48,6 +48,15 @@ app.use('/icons', express.static('public/images/icons', {
   }
 }));
 
+app.use('/location', express.static('public/images/location', {
+  setHeaders: (res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+  }
+}));
+
+
+
 // API routes
 app.use('/api', routes);
 

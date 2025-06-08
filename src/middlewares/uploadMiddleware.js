@@ -8,7 +8,7 @@ const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     // Get property ID from route params or use 'temp' for new properties
     const propertyId = req.params.id || 'temp';
-    
+
     let uploadDir;
 
     // Determine upload directory based on field name
@@ -31,23 +31,23 @@ const storage = multer.diskStorage({
     // Get current date in YYYY-MM-DD format
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
-    
+
     // Generate truly unique name with timestamp, random number and original filename
     const timestamp = Date.now();
     const random = Math.round(Math.random() * 1E9).toString().padStart(9, '0');
-    
+
     // Include part of original filename (sanitized) for better readability
     let origNameSanitized = file.originalname
-      .replace(/[^a-zA-Z0-9]/g, '') // Remove special chars
-      .substring(0, 8);              // Take first 8 chars
-    
+        .replace(/[^a-zA-Z0-9]/g, '') // Remove special chars
+        .substring(0, 8);              // Take first 8 chars
+
     if (!origNameSanitized) {
       origNameSanitized = 'file';    // Fallback if no valid chars
     }
-    
+
     // Get file extension
     const ext = path.extname(file.originalname);
-    
+
     // Final filename: timestamp-random-origname-date.ext
     cb(null, `${timestamp}-${random}-${origNameSanitized}-${dateStr}${ext}`);
   }
@@ -90,11 +90,11 @@ const handlePropertyFormData = (req, res, next) => {
       // An unknown error occurred
       return next(err);
     }
-    
+
     // Process property images
     if (req.files && req.files.images && req.files.images.length > 0) {
       console.log(`Found ${req.files.images.length} uploaded images:`, req.files.images.map(f => f.filename));
-      
+
       // Create image data array
       const images = req.files.images.map((file, index) => {
         return {
@@ -103,13 +103,13 @@ const handlePropertyFormData = (req, res, next) => {
           sortOrder: index
         };
       });
-      
+
       console.log('Created image data:', JSON.stringify(images, null, 2));
-      
+
       // Add images to request body
       req.body.images = images;
     }
-    
+
     // Process floor plan images
     if (req.files && req.files.floorPlanImages && req.files.floorPlanImages.length > 0) {
       // Create floor plan data array
@@ -120,11 +120,11 @@ const handlePropertyFormData = (req, res, next) => {
           sortOrder: index
         };
       });
-      
+
       // Add floor plans to request body
       req.body.floorPlans = floorPlans;
     }
-    
+
     // Process unit plan images
     if (req.files && req.files.unitPlanImages && req.files.unitPlanImages.length > 0) {
       // Create unit plan data array
@@ -135,11 +135,11 @@ const handlePropertyFormData = (req, res, next) => {
           sortOrder: index
         };
       });
-      
+
       // Add unit plans to request body
       req.body.unitPlans = unitPlans;
     }
-    
+
     // Continue with the next middleware
     next();
   });
@@ -156,11 +156,11 @@ const handleSingleImageUpload = (req, res, next) => {
     } else if (err) {
       return next(err);
     }
-    
+
     if (req.file) {
       req.body.imageUrl = `/images/properties/${req.params.id || 'temp'}/${req.file.filename}`;
     }
-    
+
     next();
   });
 };
@@ -170,34 +170,34 @@ const blogImageStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     // Create directory if it doesn't exist
     const uploadDir = path.join(__dirname, '../../public/images/blogs');
-    
+
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
-    
+
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
     // Get current date in YYYY-MM-DD format
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
-    
+
     // Generate truly unique name with timestamp, random number and original filename
     const timestamp = Date.now();
     const random = Math.round(Math.random() * 1E9).toString().padStart(9, '0');
-    
+
     // Include part of original filename (sanitized) for better readability
     let origNameSanitized = file.originalname
-      .replace(/[^a-zA-Z0-9]/g, '') // Remove special chars
-      .substring(0, 8);              // Take first 8 chars
-    
+        .replace(/[^a-zA-Z0-9]/g, '') // Remove special chars
+        .substring(0, 8);              // Take first 8 chars
+
     if (!origNameSanitized) {
       origNameSanitized = 'file';    // Fallback if no valid chars
     }
-    
+
     // Get file extension
     const ext = path.extname(file.originalname);
-    
+
     // Final filename: timestamp-random-origname-date.ext
     cb(null, `${timestamp}-${random}-${origNameSanitized}-${dateStr}${ext}`);
   }
@@ -227,17 +227,17 @@ const handleBlogImageUpload = (req, res, next) => {
       // Other error
       return next(err);
     }
-    
+
     // If file was uploaded, add the URL to the request body
     if (req.file) {
       // Create URL for the uploaded image
       const baseUrl = process.env.NEXT_PUBLIC_IMAGE_URL || `${req.protocol}://${req.get('host')}`;
       const imageUrl = `${baseUrl}/images/blogs/${req.file.filename}`;
-      
+
       // Add image URL to request body
       req.body.featuredImage = imageUrl;
     }
-    
+
     next();
   });
 };

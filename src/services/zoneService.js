@@ -41,8 +41,32 @@ class ZoneService {
           [sort]: order.toLowerCase()
         }
       });
-      
-      return zones;
+
+      const datazone =[]
+      for (const zone of zones) {
+        // Format image path
+        if (zone.z_image) {
+          zone.imagePath = process.env.NEXT_PUBLIC_IMAGE_URL + zone.z_image;
+        } else {
+          zone.imagePath = null; // Handle case where image is not set
+        }
+
+        // Format names
+        zone.name = zone.name || '';
+        zone.name_en = zone.nameEn || '';
+        zone.name_th = zone.nameTh || '';
+        zone.name_ch = zone.nameCh || '';
+        zone.name_ru = zone.nameRu || '';
+
+
+        datazone.push(zone)
+      }
+
+      console.log("datazone",datazone);
+
+      // Sort zones by name
+
+      return datazone;
     } catch (error) {
       console.error('Error in getAllZones service:', error);
       throw error;
@@ -208,12 +232,14 @@ class ZoneService {
       const allZones = await prisma.zone.findMany({
         select: {
           id: true,
-          name: true,
           nameEn: true,
           nameTh: true,
+          nameCh: true,
+          nameRu: true,
           description: true,
           city: true,
           province: true,
+          z_image: true,
           _count: {
             select: {
               properties: true
@@ -233,15 +259,17 @@ class ZoneService {
       const formattedZones = randomZones.map(zone => ({
         id: zone.id,
         name: zone.name,
-        nameEn: zone.nameEn,
-        nameTh: zone.nameTh,
+        name_en: zone.nameEn,
+        name_th: zone.nameTh,
+        name_ch: zone.nameCh,
+        name_ru: zone.nameRu,
         description: zone.description,
         city: zone.city,
         province: zone.province,
-        imagePath: zone.imagePath,
+        imagePath: process.env.NEXT_PUBLIC_IMAGE_URL + zone.z_image,
         propertyCount: zone._count.properties
       }));
-      
+
       return formattedZones;
     } catch (error) {
       console.error('Error in getRandomZonesWithPropertyCounts service:', error);

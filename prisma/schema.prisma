@@ -45,7 +45,10 @@ model Zone {
   name        String   @unique // ชื่อโซน เช่น Jomtien, Pratumnak
   nameEn      String   @map("name_en") // ชื่อภาษาอังกฤษ
   nameTh      String?  @map("name_th") // ชื่อภาษาไทย
+  nameCh      String?  @map("name_ch") // ชื่อภาษาจีน
+  nameRu      String?  @map("name_ru") // ชื่อภาษารัสเซีย
   description String?  @db.Text // คำอธิบาย
+  z_image     String?  @map("z_image") // URL รูปภาพโซน
   city        String? // เมือง เช่น Pattaya
   province    String // จังหวัด เช่น Chonburi
   createdAt   DateTime @default(now()) @map("created_at")
@@ -55,6 +58,21 @@ model Zone {
   properties Property[]
 
   @@map("zones")
+}
+
+model TypeProperty {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // ชื่อประเภท
+  nameEn      String   @map("name_en") // ชื่อภาษาอังกฤษ
+  nameTh      String?  @map("name_th") // ชื่อภาษาไทย
+  nameCh      String?  @map("name_ch") // ชื่อภาษาจีน
+  nameRu      String?  @map("name_ru") // ชื่อภาษารัสเซีย
+  p_image     String?  @map("z_image") // URL รูปภาพ
+  description String?  @db.Text // คําอธิบาย
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("property_types")
 }
 
 // Property model - หลักการคือ Property เป็นข้อมูลหลักของอสังหาริมทรัพย์
@@ -355,6 +373,7 @@ model UnitPlan {
   url        String // URL ของรูปภาพแผนผังยูนิต
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
+  sortOrder  Int      @default(0)
   propertyId Int      @map("property_id")
   property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
