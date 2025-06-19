@@ -130,7 +130,7 @@ class PropertyRepository {
    * Find property by ID
    */
   async findById(id) {
-    return prisma.property.findFirst({
+    const property = await prisma.property.findFirst({
       where: { 
         id: Number(id),
         deletedAt: null // กรองเฉพาะรายการที่ยังไม่ถูก soft delete
@@ -192,6 +192,37 @@ class PropertyRepository {
         user:true,
       },
     });
+
+    if (!property) return null;
+
+    // Parse JSON string fields back to objects
+    try {
+      if (property.translatedTitles && typeof property.translatedTitles === 'string') {
+        property.translatedTitles = JSON.parse(property.translatedTitles);
+      }
+      if (property.translatedDescriptions && typeof property.translatedDescriptions === 'string') {
+        property.translatedDescriptions = JSON.parse(property.translatedDescriptions);
+      }
+      if (property.translatedPaymentPlans && typeof property.translatedPaymentPlans === 'string') {
+        property.translatedPaymentPlans = JSON.parse(property.translatedPaymentPlans);
+      }
+      if (property.socialMedia && typeof property.socialMedia === 'string') {
+        property.socialMedia = JSON.parse(property.socialMedia);
+      }
+      if (property.contactInfo && typeof property.contactInfo === 'string') {
+        property.contactInfo = JSON.parse(property.contactInfo);
+      }
+    } catch (error) {
+      console.error('Error parsing JSON fields in findById:', error);
+      // Set to empty objects if parsing fails
+      property.translatedTitles = property.translatedTitles || {};
+      property.translatedDescriptions = property.translatedDescriptions || {};
+      property.translatedPaymentPlans = property.translatedPaymentPlans || {};
+      property.socialMedia = property.socialMedia || {};
+      property.contactInfo = property.contactInfo || {};
+    }
+
+    return property;
   }
 
   /**
@@ -337,14 +368,14 @@ class PropertyRepository {
           
           // Multilingual content
           description: data.description,
-          translatedTitles: data.translatedTitles || {},
-          translatedDescriptions: data.translatedDescriptions || {},
+          translatedTitles: data.translatedTitles ? JSON.stringify(data.translatedTitles) : null,
+          translatedDescriptions: data.translatedDescriptions ? JSON.stringify(data.translatedDescriptions) : null,
           paymentPlan: data.paymentPlan,
-          translatedPaymentPlans: data.translatedPaymentPlans || {},
+          translatedPaymentPlans: data.translatedPaymentPlans ? JSON.stringify(data.translatedPaymentPlans) : null,
           
           // Contact and social media
-          socialMedia: data.socialMedia  ||  {},
-          contactInfo: data.contactInfo || {},
+          socialMedia: data.socialMedia ? JSON.stringify(data.socialMedia) : null,
+          contactInfo: data.contactInfo ? JSON.stringify(data.contactInfo) : null,
           
           // Status and metadata
           status: data.status || 'ACTIVE',
@@ -486,7 +517,6 @@ class PropertyRepository {
             views: true,
             highlights: true,
             labels: true,
-            nearbyPlaces: true,
             unitPlans: true,
           }
         });
@@ -554,14 +584,14 @@ class PropertyRepository {
 
       // Multilingual content
       description: data.description,
-      translatedTitles: data.translatedTitles || undefined,
-      translatedDescriptions: data.translatedDescriptions || undefined,
+      translatedTitles: data.translatedTitles ? JSON.stringify(data.translatedTitles) : null,
+      translatedDescriptions: data.translatedDescriptions ? JSON.stringify(data.translatedDescriptions) : null,
       paymentPlan: data.paymentPlan,
-      translatedPaymentPlans: data.translatedPaymentPlans || undefined,
+      translatedPaymentPlans: data.translatedPaymentPlans ? JSON.stringify(data.translatedPaymentPlans) : null,
 
       // Contact and social media
-      socialMedia: data.socialMedia || undefined,
-      contactInfo: data.contactInfo || undefined,
+      socialMedia: data.socialMedia ? JSON.stringify(data.socialMedia) : null,
+      contactInfo: data.contactInfo ? JSON.stringify(data.contactInfo) : null,
 
       // Status and metadata
       status: data.status || 'ACTIVE',
@@ -848,13 +878,26 @@ class PropertyRepository {
               for (const imageId of Object.keys(data.existingImageMetadata)) {
                 try {
                   const metadata = data.existingImageMetadata[imageId];
+                  
+                  // ตรวจสอบว่า image ยังมีอยู่หรือไม่
+                  const imageExists = await tx.propertyImage.findUnique({
+                    where: { id: Number(imageId) }
+                  });
+                  
+                  if (!imageExists) continue;
+                  
+                  console.log(`Updating image ${imageId} metadata:`, metadata);
+                  
+                  // อัพเดต metadata
                   await tx.propertyImage.update({
                     where: { id: Number(imageId) },
                     data: {
                       isFeatured: Boolean(metadata.isFeatured) || metadata.isFeatured,
-                      sortOrder: metadata.sortOrder !== undefined ? Number(metadata.sortOrder) : undefined
+                      sortOrder: metadata.sortOrder !== undefined ? Number(metadata.sortOrder) : imageExists.sortOrder
                     }
                   });
+                  
+                  console.log(`Updated metadata for image ${imageId} successfully`);
                 } catch (error) {
                   console.error(`Failed to update metadata for image ${imageId}: ${error.message}`);
                 }

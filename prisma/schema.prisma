@@ -139,8 +139,8 @@ model Property {
   translatedPaymentPlans String? @db.LongText @map("translated_payment_plans") // แผนการชำระเงินในหลายภาษา
 
   // ข้อมูลติดต่อและโซเชียลมีเดีย
-  socialMedia Json? @map("social_media") // ข้อมูลโซเชียลมีเดีย (JSON format: {"youtubeUrl": "...", "tiktokUrl": "..."})
-  contactInfo Json? @map("contact_info") // ข้อมูลติดต่อ (JSON format: {"phone": "...", "email": "...", "lineId": "..."})
+  socialMedia String? @db.LongText @map("social_media") // ข้อมูลโซเชียลมีเดีย (JSON string format: {"youtubeUrl": "...", "tiktokUrl": "..."})
+  contactInfo String? @db.LongText @map("contact_info") // ข้อมูลติดต่อ (JSON string format: {"phone": "...", "email": "...", "lineId": "..."})
 
   // ข้อมูลเพิ่มเติม
   status    String    @default("ACTIVE") // สถานะทรัพย์สิน

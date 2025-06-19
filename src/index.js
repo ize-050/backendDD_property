@@ -34,15 +34,7 @@ app.use('/static', express.static('public', {
   }
 }));
 
-// Serve icons directory
-app.use('/icons', express.static('public/images/icons', {
-  setHeaders: (res) => {
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-  }
-}));
-
-// Serve all public images
+// Serve all public images (includes icons, properties, etc.)
 app.use('/images', express.static('public/images', {
   setHeaders: (res) => {
     res.set('Access-Control-Allow-Origin', '*');

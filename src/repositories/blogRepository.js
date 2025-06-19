@@ -111,8 +111,28 @@ class BlogRepository {
     if (data.tags !== undefined) updateData.tags = data.tags;
     
     // อัปเดตข้อมูลหลายภาษา
-    const translatedTitles = { ...existingBlog.translatedTitles };
-    const translatedContents = { ...existingBlog.translatedContents };
+    // Parse existing translated data from JSON strings
+    let translatedTitles = {};
+    let translatedContents = {};
+    
+    try {
+      if (existingBlog.translatedTitles) {
+        translatedTitles = typeof existingBlog.translatedTitles === 'string' 
+          ? JSON.parse(existingBlog.translatedTitles) 
+          : existingBlog.translatedTitles;
+      }
+      
+      if (existingBlog.translatedContents) {
+        translatedContents = typeof existingBlog.translatedContents === 'string' 
+          ? JSON.parse(existingBlog.translatedContents) 
+          : existingBlog.translatedContents;
+      }
+    } catch (error) {
+      console.error('Error parsing existing translations:', error);
+      // Use empty objects if parsing fails
+      translatedTitles = {};
+      translatedContents = {};
+    }
     
     if (data.th) {
       if (data.th.title) translatedTitles.th = data.th.title;
