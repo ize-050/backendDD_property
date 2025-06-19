@@ -60,8 +60,8 @@ class BlogRepository {
         content: data.content || '',
         slug: finalSlug,
         status: 'PUBLISHED',
-        translatedTitles: translatedTitles,
-        translatedContents: translatedContents,
+        translatedTitles: translatedTitles ? JSON.stringify(translatedTitles) : null,
+        translatedContents: translatedContents ? JSON.stringify(translatedContents) : null,
         featuredImage: data.featuredImage,
         category: data.category || null,
         tags: data.tags || null,
@@ -134,8 +134,8 @@ class BlogRepository {
 
 
 
-    updateData.translatedTitles = translatedTitles;
-    updateData.translatedContents = translatedContents;
+    updateData.translatedTitles = translatedTitles ? JSON.stringify(translatedTitles) : null;
+    updateData.translatedContents = translatedContents ? JSON.stringify(translatedContents) : null;
     
     // อัปเดต Blog
     const blog = await prisma.blog.update({

@@ -133,10 +133,10 @@ model Property {
 
   // ข้อมูลหลายภาษา
   description            String  @db.Text // คำอธิบายภาษาอังกฤษ
-  translatedTitles       Json?   @map("translated_titles") // หัวข้อในหลายภาษา (JSON format: {"th": "...", "zh": "...", "ru": "..."})
-  translatedDescriptions Json?   @map("translated_descriptions") // คำอธิบายในหลายภาษา (JSON format: {"th": "...", "zh": "...", "ru": "..."})
+  translatedTitles       String? @db.LongText @map("translated_titles") // หัวข้อในหลายภาษา (JSON string format: {"th": "...", "zh": "...", "ru": "..."})
+  translatedDescriptions String? @db.LongText @map("translated_descriptions") // คำอธิบายในหลายภาษา (JSON string format: {"th": "...", "zh": "...", "ru": "..."})
   paymentPlan            String? @map("payment_plan") @db.Text // แผนการชำระเงิน
-  translatedPaymentPlans Json?   @map("translated_payment_plans") // แผนการชำระเงินในหลายภาษา
+  translatedPaymentPlans String? @db.LongText @map("translated_payment_plans") // แผนการชำระเงินในหลายภาษา
 
   // ข้อมูลติดต่อและโซเชียลมีเดีย
   socialMedia Json? @map("social_media") // ข้อมูลโซเชียลมีเดีย (JSON format: {"youtubeUrl": "...", "tiktokUrl": "..."})
@@ -512,8 +512,8 @@ model Blog {
   // ข้อมูลหลายภาษา
   title              String // หัวข้อภาษาอังกฤษ (หลัก)
   content            String @db.LongText // เนื้อหาภาษาอังกฤษ (หลัก)
-  translatedTitles   Json?  @map("translated_titles") // หัวข้อในหลายภาษา (JSON format: {"th": "...", "zh": "...", "ru": "..."})
-  translatedContents Json?  @map("translated_contents") // เนื้อหาในหลายภาษา (JSON format: {"th": "...", "zh": "...", "ru": "..."})
+  translatedTitles   String? @db.LongText @map("translated_titles") // หัวข้อในหลายภาษา (JSON string format: {"th": "...", "zh": "...", "ru": "..."})
+  translatedContents String? @db.LongText @map("translated_contents") // เนื้อหาในหลายภาษา (JSON string format: {"th": "...", "zh": "...", "ru": "..."})
 
   // ข้อมูลเพิ่มเติม
   featuredImage String? @map("featured_image") // URL รูปภาพหลัก
