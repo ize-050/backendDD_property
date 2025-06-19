@@ -94,8 +94,9 @@ class MessageRepository {
               id: true,
               projectName: true,
               propertyType: true,
-              district: true
-            }
+              district: true,
+              images: true
+            },
           }
         }
       }),
@@ -115,6 +116,44 @@ class MessageRepository {
         limit
       }
     };
+  }
+
+  async getRole(userId) {
+    return prisma.user.findUnique({
+      where: { id: parseInt(userId) },
+      select: { role: true }
+    });
+  }
+
+  async getPropertyByMessage(userId) {
+    try{
+      
+      const role = await this.getRole(userId);
+      if(role.role === 'ADMIN') {
+        return prisma.property.findMany({
+          select: {
+            id: true,
+            projectName: true,
+            propertyType: true,
+            district: true
+          }
+        }); 
+      }
+      if(role.role === 'USER') {
+        return prisma.property.findMany({
+          where: { userId: parseInt(userId) },
+          select: {
+            id: true,
+            projectName: true,
+            propertyType: true,
+            district: true
+          }
+        });
+      }
+    }
+    catch(error){
+      throw error;
+    }
   }
 }
 

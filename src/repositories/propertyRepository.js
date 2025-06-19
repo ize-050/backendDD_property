@@ -23,7 +23,7 @@ class PropertyRepository {
       limit = 10,
       sortBy = 'createdAt',
       sortOrder = 'desc',
-      propertyType,
+      propertyType, // ยังคงรับ propertyType จาก options แต่จะใช้เป็น property_type_id
       listingType,
       minPrice,
       maxPrice,
@@ -41,6 +41,7 @@ class PropertyRepository {
 
     // Build filter conditions
     const where = {
+      deletedAt: null, // กรองเฉพาะรายการที่ยังไม่ถูก soft delete
       listings: {
       },
     }
@@ -60,7 +61,7 @@ class PropertyRepository {
       where.userId = Number(userId);
     }
 
-    if (propertyType) where.propertyType = propertyType;
+    if (propertyType) where.property_type_id = Number(propertyType);
     if (listingType) where.listingType = listingType;
     if (city) where.city = city;
     if (bedrooms) where.bedrooms = Number(bedrooms);
@@ -76,6 +77,10 @@ class PropertyRepository {
     }
 
     if (zoneId) where.zoneId = Number(zoneId);
+
+    where.deletedAt = null;
+
+    
     // Execute query
     const [properties, total] = await Promise.all([
       prisma.property.findMany({
@@ -125,8 +130,11 @@ class PropertyRepository {
    * Find property by ID
    */
   async findById(id) {
-    return prisma.property.findUnique({
-      where: { id: Number(id) },
+    return prisma.property.findFirst({
+      where: { 
+        id: Number(id),
+        deletedAt: null // กรองเฉพาะรายการที่ยังไม่ถูก soft delete
+      },
       include: {
         images: true,
         features:true,
@@ -181,13 +189,7 @@ class PropertyRepository {
         },
         unitPlans: true,
         floorPlans: true,
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
+        user:true,
       },
     });
   }
@@ -286,17 +288,13 @@ class PropertyRepository {
           
           console.log("labelsData processed:", labelsData);
         }
-
         // Prepare property base data
         const propertyData = {
-          // Basic property info
           title: data.propertyTitle || data.title,
           projectName: data.projectName,
           propertyCode: data.propertyCode || data.propertyId,
           referenceId: data.referenceId,
-          propertyType: Array.isArray(data.propertyType) ? data.propertyType[0] : data.propertyType,
-
-          // Address info
+          propertyTypeId: Number(data.property_type_id),
           address: data.address,
           searchAddress: data.searchAddress,
           district: data.district,
@@ -353,11 +351,8 @@ class PropertyRepository {
 
           // User relation
           userId:  data.userId ? parseInt(data.userId) : 1,
+          zoneId: data.zone_id ? parseInt(data.zone_id) : undefined,
         };
-
-
-
-     //   Create property with all relations
         const property = await tx.property.create({
           data: {
             ...propertyData,
@@ -392,7 +387,6 @@ class PropertyRepository {
             nearbyPlaces: nearbyPlacesData.length > 0 ? {
               create: nearbyPlacesData,
             } : undefined,
-
           },
           include: {
             features: true,
@@ -401,6 +395,8 @@ class PropertyRepository {
             views: true,
             highlights: true,
             labels: true,
+            zone: true,
+            user: true,
             nearbyPlaces: true,
           },
         });
@@ -513,7 +509,7 @@ class PropertyRepository {
       projectName: data.projectName,
       propertyCode: data.propertyCode || data.propertyId,
       referenceId: data.referenceId,
-      propertyType: Array.isArray(data.propertyType) ? data.propertyType[0] : data.propertyType,
+      propertyTypeId: data.property_type_id,
 
       // Address info
       address: data.address,
@@ -1204,12 +1200,34 @@ class PropertyRepository {
 
 
   /**
-   * Delete property
+   * Hard delete property
    */
   async delete(id) {
     return prisma.property.delete({
       where: { id: Number(id) },
     });
+  }
+  
+  /**
+   * Soft delete property by setting deletedAt timestamp
+   * @param {number} id - Property ID
+   * @returns {Promise<Object>} - Updated property with deletedAt timestamp
+   */
+  async softDelete(id) {
+    try {
+      const property = await prisma.property.update({
+        where: { id: Number(id) },
+        data: { 
+          deletedAt: new Date(),
+          status: 'INACTIVE'
+        }
+      });
+      
+      return property;
+    } catch (error) {
+      console.error('Error soft deleting property:', error);
+      throw error;
+    }
   }
 
   /**
@@ -1285,12 +1303,23 @@ class PropertyRepository {
           // Use random ordering
           id: 'asc',
         },
+        where:{
+          deletedAt: null,
+        },
         include: {
           images: true,
           listings: true,
           highlights: true,
           amenities: true,
           views: true,
+          labels:{
+            where:{
+              active:true
+            },
+            include:{
+              Icon:true
+            }
+          }
         },
       });
 
@@ -1307,6 +1336,11 @@ class PropertyRepository {
             highlights: true,
             amenities: true,
             views: true,
+            labels:{
+              include:{
+                Icon:true
+              }
+            }
           },
         });
       }
@@ -1347,6 +1381,7 @@ class PropertyRepository {
       ];
     }
 
+    where.deletedAt = null;
     // Execute query
     const [properties, total] = await Promise.all([
       prisma.property.findMany({
@@ -1354,11 +1389,12 @@ class PropertyRepository {
         include: {
           images: true,
           listings: true,
+          propertyType:true,
+          labels:true,
           // Include view and inquiry counts
           _count: {
             select: {
               views: true,
-              
             },
           },
         },
@@ -1384,7 +1420,7 @@ class PropertyRepository {
       }) : 'N/A',
       // Get the featured image
       featuredImage: property.images && property.images.length > 0
-        ? property.images.find(img => img.isFeatured) || property.images[0]
+        ? property.images.find(img => img.isFeatured) || property.images.find(res=>res.sortOrder===0)
         : null,
     }));
 

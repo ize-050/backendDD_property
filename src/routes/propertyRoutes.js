@@ -18,7 +18,7 @@ router.get('/random', apiKeyAuth, propertyController.getRandomProperties);
 router.get('/types', apiKeyAuth, propertyController.getPropertyTypes);
 
 // Property price types endpoint
-router.get('/price-types', apiKeyAuth, propertyController.getPropertyPriceTypes);
+router.get('/price-types', propertyController.getPropertyPriceTypes);
 
 // My Properties endpoint - requires authentication
 router.get('/backoffice/my-properties', authMiddleware.authenticate, propertyController.getUserProperties);
@@ -47,6 +47,12 @@ router.put('/:id',
 router.delete('/:id', 
   authMiddleware.authenticate, 
   propertyController.deleteProperty
+);
+
+// Duplicate property
+router.post('/:id/duplicate',
+  authMiddleware.authenticate,
+  propertyController.duplicateProperty
 );
 
 // Add property image

@@ -16,6 +16,8 @@ model User {
   email      String            @unique
   password   String
   name       String?
+  firstname  String?
+  lastname   String?
   phone      String?
   phoneAlt   String?           @map("phone_alt") // เบอร์โทรสำรอง
   lineId     String?           @map("line_id")
@@ -23,6 +25,7 @@ model User {
   whatsapp   String?
   facebook   String?
   instagram  String?
+  picture    String?
   role       Role              @default(USER)
   createdAt  DateTime          @default(now()) @map("created_at")
   updatedAt  DateTime          @updatedAt @map("updated_at")
@@ -71,9 +74,11 @@ model TypeProperty {
   description String?  @db.Text // คําอธิบาย
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
+  properties Property[]
 
   @@map("property_types")
 }
+
 
 // Property model - หลักการคือ Property เป็นข้อมูลหลักของอสังหาริมทรัพย์
 model Property {
@@ -82,7 +87,7 @@ model Property {
   projectName   String       @map("project_name") // ชื่อโครงการ
   propertyCode  String?      @unique @map("property_code") // รหัสทรัพย์ (auto generate)
   referenceId   String?      @map("reference_id") // รหัสอ้างอิง
-  propertyType  PropertyType @map("property_type") // ประเภทอสังหาริมทรัพย์ (คอนโด, บ้านเดี่ยว, ทาวน์เฮาส์, ฯลฯ)
+  propertyTypeId Int         @map("property_type_id")
   address       String       @db.Text // ที่อยู่
   searchAddress String?      @map("search_address") @db.Text // ที่อยู่สำหรับค้นหา
   district      String // เขต/อำเภอ
@@ -96,6 +101,8 @@ model Property {
 
   // ความสัมพันธ์กับ Zone
   zoneId Int?  @map("zone_id")
+  
+  propertyType  TypeProperty @relation(fields: [propertyTypeId], references: [id])
   zone   Zone? @relation(fields: [zoneId], references: [id])
 
   // ข้อมูลพื้นที่ - สำหรับทุกประเภททรัพย์สิน
@@ -169,9 +176,10 @@ model Message {
   message    String        @db.Text
   propertyId Int           @map("property_id") // ปรับให้เป็น required
   property   Property      @relation(fields: [propertyId], references: [id]) // เพิ่ม relation กับ Property
-  status     ContactStatus @default(NEW)
+  status     String?       @default("NEW")
   createdAt  DateTime      @default(now()) @map("created_at")
   updatedAt  DateTime      @updatedAt @map("updated_at")
+  deletedAt  DateTime?     @map("deleted_at") // วันที่ลบข้อมูล (soft delete)
 
   @@map("messages")
 }
@@ -247,6 +255,8 @@ enum Currency {
   USD
   CNY
   RUB
+  GBP
+  EUR
 }
 
 enum CommissionType {
@@ -254,21 +264,21 @@ enum CommissionType {
   FIXED_AMOUNT
 }
 
-enum PropertyType {
-  CONDO
-  HOUSE
-  TOWNHOUSE
-  VILLA
-  LAND
-  APARTMENT
-  COMMERCIAL
-  OFFICE
-  RETAIL
-  WAREHOUSE
-  FACTORY
-  HOTEL
-  RESORT
-}
+// enum PropertyType {
+//   CONDO
+//   HOUSE
+//   TOWNHOUSE
+//   VILLA
+//   LAND
+//   APARTMENT
+//   COMMERCIAL
+//   OFFICE
+//   RETAIL
+//   WAREHOUSE
+//   FACTORY
+//   HOTEL
+//   RESORT
+// }
 
 enum LandShape {
   RECTANGLE
@@ -485,9 +495,11 @@ model PropertyNearby {
 
 enum ContactStatus {
   NEW
-  READ
-  REPLIED
-  ARCHIVED
+  CONTACTED
+  VISIT
+  PROPOSAL
+  WON
+  LOST
 }
 
 // Blog model - สำหรับบทความในเว็บไซต์
@@ -517,6 +529,39 @@ model Blog {
 
   @@map("blogs")
 }
+
+
+model UiString {
+  id        Int    @id @default(autoincrement())
+  section   String @db.VarChar(100)      // เช่น 'overview', 'header', 'footer'
+  slug      String @db.VarChar(100)
+  en        String @db.VarChar(255)
+  th        String @db.VarChar(255)
+  zhCN      String @db.VarChar(255)
+  ru        String @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // item   MenuItem[]
+
+  @@index([section])
+  @@map("ui_string")
+}
+
+model MenuItem {
+  id          Int      @id @default(autoincrement())
+  path        String   @unique @db.VarChar(255)   // '/buy', '/rent'
+  icon        String?  @db.VarChar(64)
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  labelSlug   String   @db.VarChar(100)
+  // label       UiString @relation(fields: [labelSlug], references: [slug])
+
+  @@index([sortOrder])
+  @@map("menu_item")
+}
+
 
 // สถานะบทความ
 enum BlogStatus {

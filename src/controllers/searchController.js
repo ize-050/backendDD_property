@@ -11,7 +11,14 @@ class SearchController {
    */
   async searchProperties(req, res, next) {
     try {
-      const properties = await searchService.searchProperties(req.query);
+      // Map keyword parameter to search for compatibility
+      const filters = { ...req.query };
+      if (filters.keyword) {
+        filters.search = filters.keyword;
+        delete filters.keyword;
+      }
+      
+      const properties = await searchService.searchProperties(filters);
       
       res.status(200).json({
         status: 'success',

@@ -8,6 +8,139 @@ const prisma = new PrismaClient();
  */
 class PropertyService {
   /**
+   * Duplicate a property with all its related data
+   * @param {string} propertyId - ID of the property to duplicate
+   * @param {string} userId - ID of the user duplicating the property
+   * @returns {Promise<Object>} - The duplicated property
+   */
+  async duplicateProperty(propertyId, userId) {
+    try {
+      // Start a transaction to ensure all operations succeed or fail together
+      return await prisma.$transaction(async (prismaClient) => {
+        // 1. Get the original property with all related data
+        const originalProperty = await prismaClient.property.findUnique({
+          where: { id: propertyId },
+          include: {
+            listings: true,
+            images: true,
+            features: true,
+            amenities: true,
+            locations: true
+          }
+        });
+
+        if (!originalProperty) {
+          throw new ApiError(404, 'Property not found');
+        }
+
+        // 2. Generate a new reference number
+        const currentDate = new Date();
+        const year = currentDate.getFullYear().toString().slice(-2);
+        const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
+        const day = currentDate.getDate().toString().padStart(2, '0');
+        const randomDigits = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        const newReference = `DP-${year}${month}${day}-${randomDigits}`;
+
+        // 3. Create a new property record (excluding the id and reference)
+        const { id, reference, createdAt, updatedAt, ...propertyData } = originalProperty;
+        
+        // Create the new property with the new reference
+        const newProperty = await prismaClient.property.create({
+          data: {
+            ...propertyData,
+            reference: newReference,
+            projectName: `${propertyData.projectName}`,
+            userId: userId,
+            status: 'publish', // Start as draft
+            viewCount: 0,    // Reset counts
+            inquiryCount: 0
+          }
+        });
+
+        // 4. Duplicate listings
+        if (originalProperty.listings && originalProperty.listings.length > 0) {
+          for (const listing of originalProperty.listings) {
+            const { id, propertyId, createdAt, updatedAt, ...listingData } = listing;
+            await prismaClient.listing.create({
+              data: {
+                ...listingData,
+                propertyId: newProperty.id
+              }
+            });
+          }
+        }
+
+        // 5. Duplicate images
+        if (originalProperty.images && originalProperty.images.length > 0) {
+          for (const image of originalProperty.images) {
+            const { id, propertyId, createdAt, updatedAt, ...imageData } = image;
+            await prismaClient.image.create({
+              data: {
+                ...imageData,
+                propertyId: newProperty.id
+              }
+            });
+          }
+        }
+
+        // 6. Duplicate features
+        if (originalProperty.features && originalProperty.features.length > 0) {
+          for (const feature of originalProperty.features) {
+            const { id, propertyId, createdAt, updatedAt, ...featureData } = feature;
+            await prismaClient.feature.create({
+              data: {
+                ...featureData,
+                propertyId: newProperty.id
+              }
+            });
+          }
+        }
+
+        // 7. Duplicate amenities
+        if (originalProperty.amenities && originalProperty.amenities.length > 0) {
+          for (const amenity of originalProperty.amenities) {
+            const { id, propertyId, createdAt, updatedAt, ...amenityData } = amenity;
+            await prismaClient.amenity.create({
+              data: {
+                ...amenityData,
+                propertyId: newProperty.id
+              }
+            });
+          }
+        }
+
+        // 8. Duplicate locations
+        if (originalProperty.locations && originalProperty.locations.length > 0) {
+          for (const location of originalProperty.locations) {
+            const { id, propertyId, createdAt, updatedAt, ...locationData } = location;
+            await prismaClient.location.create({
+              data: {
+                ...locationData,
+                propertyId: newProperty.id
+              }
+            });
+          }
+        }
+
+        // Return the newly created property with all its relations
+        return await prismaClient.property.findUnique({
+          where: { id: newProperty.id },
+          include: {
+            listings: true,
+            images: true,
+            features: true,
+            amenities: true,
+            locations: true
+          }
+        });
+      });
+    } catch (error) {
+      console.error('Error duplicating property:', error);
+      throw new ApiError(500, 'Failed to duplicate property', false, error.stack);
+    }
+  }
+
+  /**
    * Get all properties with pagination and filtering
    */
   async getAllProperties(queryParams) {
@@ -119,6 +252,37 @@ class PropertyService {
     }
   }
 
+  /**
+   * Create a duplicate property from existing property data
+   * This function is similar to createProperty but specifically for duplicating properties
+   * @param {Object} propertyData - Property data to duplicate
+   * @param {string} userId - ID of the user creating the duplicate
+   * @returns {Promise<Object>} - The newly created duplicate property
+   */
+  async createDuplicateProperty(propertyData, userId) {
+    try {
+      // Generate a new property code
+      propertyData.propertyCode = await this.generateNextPropertyCode();
+      
+      // Set the user ID for the new property
+      propertyData.userId = userId;
+      
+      // Set status to publish for the duplicate property
+      propertyData.status = 'publish';
+      
+      // Reset counts for the new property
+      propertyData.viewCount = 0;
+      propertyData.inquiryCount = 0;
+      
+      // Create the duplicate property
+      const newProperty = await propertyRepository.create(propertyData);
+      
+      return newProperty;
+    } catch (error) {
+      throw new ApiError(500, 'Error creating duplicate property', false, error.stack);
+    }
+  }
+
 
   /**
    * Update property
@@ -153,12 +317,8 @@ class PropertyService {
         throw new ApiError(404, `Property with ID ${id} not found`);
       }
 
-      // Check if user is owner or admin
-      if (property.userId !== userId) {
-        throw new ApiError(403, 'Not authorized to delete this property');
-      }
 
-      return await propertyRepository.delete(id);
+      return await propertyRepository.softDelete(id);
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new ApiError(500, 'Error deleting property', false, error.stack);
@@ -273,48 +433,41 @@ class PropertyService {
    */
   async getPropertyPriceTypes() {
     try {
-      // กำหนดลำดับการแสดงผลตามที่ต้องการ
-      const customOrder = [
-        'CONDO', // Condominium
-        'VILLA', // Pool villa
-        'HOTEL', // Hotel
-        'HOUSE', // House
-        'TOWNHOUSE',
-        'LAND',
-        'APARTMENT',
-        'COMMERCIAL',
-        'OFFICE',
-        'RETAIL',
-        'WAREHOUSE',
-        'FACTORY',
-        'RESORT'
-      ];
-      
-      // ดึงข้อมูลจำนวนอสังหาริมทรัพย์ในแต่ละประเภท
-      const propertyCounts = await prisma.property.groupBy({
-        by: ['propertyType'],
-        _count: {
-          id: true
+      // ดึงข้อมูลประเภทอสังหาริมทรัพย์จากตาราง TypeProperty
+      const propertyTypes = await prisma.typeProperty.findMany({
+        orderBy: {
+          name: 'asc'
         }
       });
       
-      // สร้าง map ของจำนวนอสังหาริมทรัพย์แต่ละประเภท
-      const countMap = {};
-      propertyCounts.forEach(item => {
-        countMap[item.propertyType] = item._count.id;
+      // ดึงข้อมูลจำนวนอสังหาริมทรัพย์ในแต่ละประเภท
+      const propertyCounts = await prisma.property.groupBy({
+        by: ['propertyTypeId'],
+        _count: {
+          id: true
+        },
+        where:{
+          deletedAt:null
+        }
       });
       
-      // สร้างข้อมูลประเภทอสังหาริมทรัพย์ตามลำดับที่กำหนด
-      const propertyTypes = customOrder.map((type, index) => ({
-        id: index + 1,
-        name: type,
-        nameTh: this.getPropertyTypeNameTh(type),
-        description: this.getPropertyTypeDescription(type),
-        count: countMap[type] || 0,
-        image: this.getPropertyTypeImage(type)
+      const countMap = {};
+      propertyCounts.forEach(item => {
+        countMap[item.propertyTypeId] = item._count.id;
+      });
+
+      console.log("propertyCounts",propertyCounts);
+
+      let enrichedPropertyTypes = propertyTypes.map(type => ({
+        ...type,
+        count: countMap[type.id] || 0,
+        image: process.env.NEXT_PUBLIC_IMAGE_URL + type.p_image
       }));
+
+
+      enrichedPropertyTypes = enrichedPropertyTypes.filter(item => item.count > 0);
       
-      return propertyTypes;
+      return enrichedPropertyTypes;
     } catch (error) {
       throw new ApiError(500, 'Error fetching property price types', false, error.stack);
     }
@@ -352,22 +505,17 @@ class PropertyService {
    */
   async getPropertyTypes() {
     try {
-      // ดึงค่า enum PropertyType จาก Prisma
-      const propertyTypes = Object.keys(prisma.$Enums.PropertyType);
+      // ดึงข้อมูลจากตาราง TypeProperty ในฐานข้อมูล
+      const propertyTypes = await prisma.typeProperty.findMany({
+        orderBy: {
+          name: 'asc'
+        }
+      });
       
-      // สร้าง array ของ objects ที่มี id และ name
-      const formattedPropertyTypes = propertyTypes.map((type, index) => ({
-        id: index + 1,
-        name: type,
-        // เพิ่มชื่อภาษาไทยสำหรับแต่ละประเภท
-        nameTh: this.getPropertyTypeNameTh(type),
-        // เพิ่มคำอธิบายสำหรับแต่ละประเภท
-        description: this.getPropertyTypeDescription(type)
-      }));
-      
-      return formattedPropertyTypes;
+      return propertyTypes;
     } catch (error) {
-      throw new ApiError(500, 'Error fetching property types', false, error.stack);
+      console.error('Error fetching property types:', error);
+      throw error;
     }
   }
   

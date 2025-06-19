@@ -18,18 +18,7 @@ class CurrencyService {
           { currency: 'asc' }
         ]
       });
-      
-      // ถ้าไม่มีข้อมูล ให้สร้างข้อมูลเริ่มต้น
-      if (currencyRates.length === 0) {
-        await this.seedCurrencies();
-        return await prisma.currencyRate.findMany({
-          orderBy: [
-            { isBase: 'desc' },
-            { currency: 'asc' }
-          ]
-        });
-      }
-      
+
       return currencyRates;
     } catch (error) {
       console.error('Error in getAllCurrencies:', error);
@@ -47,24 +36,24 @@ class CurrencyService {
       if (!Array.isArray(currencyData)) {
         throw new ApiError(400, 'Currency data must be an array');
       }
-      
+
       const updatePromises = currencyData.map(async (data) => {
         // ตรวจสอบข้อมูล
         if (!data.currency || !data.rate) {
           throw new ApiError(400, 'Currency and rate are required');
         }
-        
+
         // ไม่อนุญาตให้แก้ไขอัตราของ THB
         if (data.currency === 'THB' && parseFloat(data.rate) !== 1) {
           data.rate = 1;
         }
-        
+
         // อัปเดตหรือสร้างข้อมูลใหม่
         return prisma.currencyRate.upsert({
-          where: { 
-            currency: data.currency 
+          where: {
+            currency: data.currency
           },
-          update: { 
+          update: {
             rate: parseFloat(data.rate),
             name: data.name || this.getCurrencyName(data.currency),
             isBase: data.currency === 'THB'
@@ -77,7 +66,7 @@ class CurrencyService {
           }
         });
       });
-      
+
       const results = await Promise.all(updatePromises);
       return results;
     } catch (error) {
@@ -97,19 +86,21 @@ class CurrencyService {
     try {
       // ตรวจสอบว่ามีข้อมูลอยู่แล้วหรือไม่
       const existingCurrencies = await prisma.currencyRate.findMany();
-      
+
       if (existingCurrencies.length > 0) {
         return existingCurrencies;
       }
-      
+
       // ข้อมูลเริ่มต้น
       const defaultCurrencies = [
         { currency: 'THB', rate: 1.00, name: 'BATH', isBase: true },
         { currency: 'USD', rate: 0.028, name: 'US DOLLAR', isBase: false },
         { currency: 'CNY', rate: 0.20, name: 'YUAN', isBase: false },
         { currency: 'RUB', rate: 2.50, name: 'RUBLE', isBase: false },
+        { currency: 'GBP', rate: 2.24, name: 'POUND', isBase: false },
+        { currency: 'EUR', rate: 2.63, name: 'EUR', isbase: false },
       ];
-      
+
       // สร้างข้อมูลทีละรายการเพื่อหลีกเลี่ยงปัญหากับ enum
       const createPromises = defaultCurrencies.map(async (currency) => {
         return prisma.currencyRate.create({
@@ -121,7 +112,7 @@ class CurrencyService {
           }
         });
       });
-      
+
       const results = await Promise.all(createPromises);
       return results;
     } catch (error) {
@@ -129,7 +120,7 @@ class CurrencyService {
       throw new ApiError(500, 'Failed to seed currency data');
     }
   }
-  
+
   /**
    * ดึงชื่อสกุลเงินจากรหัส
    * @param {string} currency รหัสสกุลเงิน
@@ -142,7 +133,7 @@ class CurrencyService {
       'CNY': 'YUAN',
       'RUB': 'RUBLE'
     };
-    
+
     return names[currency] || currency;
   }
 }

@@ -42,8 +42,12 @@ class MessageController {
     try {
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 20;
+
+      const userId = req.user.userId;
+
+
       
-      const result = await messageService.getAllMessages(page, limit);
+      const result = await messageService.getAllMessages(page, limit, userId);
       
       return res.status(200).json({
         success: true,
@@ -100,6 +104,22 @@ class MessageController {
         success: true,
         data: result.messages,
         pagination: result.pagination
+      });
+    } catch (error) {
+      return handleError(error, res);
+    }
+  }
+
+  async getPropertyByMessage(req, res) {
+    try {
+
+      const userId = req.user.userId;
+      
+      const result = await messageService.getPropertyByMessage(userId);
+      console.log("result",result);
+      return res.status(200).json({
+        success: true,
+        data: result
       });
     } catch (error) {
       return handleError(error, res);

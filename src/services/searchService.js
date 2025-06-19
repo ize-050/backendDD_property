@@ -36,18 +36,12 @@ class SearchService {
       
       // Property type filter
       if (propertyType) {
-        where.propertyType = propertyType;
+        where.propertyType = {
+          name: propertyType
+        };
+
       }
 
-      if(type){
-        console.log("type",type.toUpperCase())
-        where.listings = {
-          some: {
-            listingType: type.toUpperCase()
-          }
-        }
-      }
-      
       // Location filters
       if (zoneId) {
         where.zoneId = Number(zoneId);
@@ -59,20 +53,6 @@ class SearchService {
       
       if (province) {
         where.province = province;
-      }
-      
-      // Price filter
-      if (minPrice || maxPrice) {
-        where.listings = {
-          some: {
-            ...(minPrice || maxPrice ? {
-              price: {
-                ...(minPrice && { gte: Number(minPrice) }),
-                ...(maxPrice && { lte: Number(maxPrice) })
-              }
-            } : {})
-          }
-        };
       }
       
       // Bedrooms filter
@@ -97,6 +77,27 @@ class SearchService {
         ];
       }
       
+      // Build listing filters (type and price)
+      const listingConditions = {};
+      
+      if (type) {
+        listingConditions.listingType = type.toUpperCase();
+      }
+      
+      if (minPrice || maxPrice) {
+        listingConditions.price = {
+          ...(minPrice && { gte: Number(minPrice) }),
+          ...(maxPrice && { lte: Number(maxPrice) })
+        };
+      }
+      
+      // Apply listing filters if any conditions exist
+      if (Object.keys(listingConditions).length > 0) {
+        where.listings = {
+          some: listingConditions
+        };
+      }
+      
       // Get total count
       const total = await prisma.property.count({ where });
       
@@ -118,7 +119,16 @@ class SearchService {
           highlights: true,
           amenities: true,
           views: true,
-          zone: true
+          zone: true,
+          propertyType:true,
+          labels:{
+            where:{
+              active:true
+            },
+            include:{
+              Icon:true
+            }
+          }
         },
         skip,
         take: Number(limit),
@@ -160,9 +170,17 @@ class SearchService {
             ...property.zone,
             name_th : property.zone.nameTh,
             name_en : property.zone.nameEn || property.zone.name,
-            name_ch : property.zone.naneCh || property.zone.name,
+            name_ch : property.zone.nameCh || property.zone.name,
             name_ru : property.zone.nameRu || property.zone.name,
           } : null,
+          propertyType:property.propertyType ? {
+            ...property.propertyType,
+            name_th : property.propertyType.nameTh,
+            name_en : property.propertyType.nameEn || property.propertyType.name,
+            name_ch : property.propertyType.nameCh || property.propertyType.name,
+            name_ru : property.propertyType.nameRu || property.propertyType.name,
+          } : null,
+          propertyLabel:property.propertyLabel,
           images: sortedImages
         };
       });

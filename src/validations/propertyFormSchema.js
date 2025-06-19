@@ -13,10 +13,7 @@ const propertyFormValidation = [
     .notEmpty().withMessage('Project name is required')
     .isString().withMessage('Project name must be a string'),
   
-  body('propertyType')
-    .notEmpty().withMessage('Property type is required')
-    .isIn(['CONDO', 'HOUSE', 'TOWNHOUSE', 'VILLA', 'LAND', 'APARTMENT', 'COMMERCIAL', 'OFFICE', 'RETAIL', 'WAREHOUSE', 'FACTORY', 'HOTEL', 'RESORT'])
-    .withMessage('Invalid property type'),
+  body('propertyType').notEmpty().withMessage('Property type is required'),
   
   // Address info
   body('address')
@@ -110,9 +107,7 @@ const propertyFormValidation = [
     .optional()
     .isInt({ min: 0 }).withMessage('Bathrooms must be a non-negative integer'),
   
-  body('floors')
-    .optional()
-    .isInt({ min: 0 }).withMessage('Floors must be a non-negative integer'),
+  body('floors').optional(),
   
   body('furnishing')
     .optional()

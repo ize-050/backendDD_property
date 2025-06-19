@@ -8,8 +8,9 @@ router.post('/', messageController.createMessage);
 
 // Admin routes (ต้องการการยืนยันตัวตน)
 router.get('/property/:propertyId', authMiddleware.authenticate, messageController.getMessagesByPropertyId);
+router.get('/propertiesBymessage', authMiddleware.authenticate, messageController.getPropertyByMessage);
 router.get('/',  authMiddleware.authenticate, messageController.getAllMessages);
 router.get('/user',  authMiddleware.authenticate, messageController.getMessagesByUser);
-router.patch('/:id/status',  authMiddleware.authenticate, messageController.updateMessageStatus);
+router.put('/:id/status',  authMiddleware.authenticate, messageController.updateMessageStatus);
 
 module.exports = router;

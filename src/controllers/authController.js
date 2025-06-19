@@ -63,7 +63,6 @@ const getProfile = async (req, res) => {
     const userId = req.user.userId;
     
     const user = await authService.getUserById(userId);
-    console.log("userProfile", user);
     if (!user) {
       return res.status(404).json({
         success: false,

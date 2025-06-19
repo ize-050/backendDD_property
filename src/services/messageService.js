@@ -31,8 +31,18 @@ class MessageService {
     return messageRepository.getMessagesByPropertyId(propertyId);
   }
 
-  async getAllMessages(page = 1, limit = 20) {
-    return messageRepository.getAllMessages(page, limit);
+  async getAllMessages(page = 1, limit = 20, userId
+    
+  ) {
+
+    const role = await messageRepository.getRole(userId);
+
+    if(role === 'ADMIN') {
+      return messageRepository.getAllMessages(page, limit);
+    }
+    if(role === 'USER') {
+      return messageRepository.getMessagesByUserId(userId, page, limit);
+    }
   }
 
   async updateMessageStatus(id, status) {
@@ -40,9 +50,9 @@ class MessageService {
       throw new BadRequestError('Message ID and status are required');
     }
 
-    const validStatuses = ['NEW', 'READ', 'REPLIED', 'ARCHIVED'];
+    const validStatuses = ['NEW', 'CONTACTED', 'VISIT', 'PROPOSAL', 'WON', 'LOST'];
     if (!validStatuses.includes(status)) {
-      throw new BadRequestError('Invalid status. Must be one of: NEW, READ, REPLIED, ARCHIVED');
+      throw new BadRequestError('Invalid status. Must be one of: NEW, CONTACTED, VISIT, PROPOSAL, WON, LOST');
     }
 
     return messageRepository.updateMessageStatus(id, status);
@@ -54,6 +64,16 @@ class MessageService {
     }
 
     return messageRepository.getMessagesByUserId(userId, page, limit);
+  }
+
+
+  async getPropertyByMessage(userId) {
+    try{
+        return messageRepository.getPropertyByMessage(userId);
+    }
+    catch(error){
+      throw error;
+    }
   }
 }
 

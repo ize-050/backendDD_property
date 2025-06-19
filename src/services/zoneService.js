@@ -150,19 +150,24 @@ class ZoneService {
       const properties = await prisma.property.findMany({
         where,
         include: {
-          propertyImages: {
+          images: {
             orderBy: [
               { isFeatured: 'desc' },
               { sortOrder: 'asc' }
             ]
           },
-          propertyListings: {
+          listings: {
             take: 1,
             orderBy: {
               createdAt: 'desc'
             }
           },
-          zone: true
+          zone: true,
+          labels:{
+            include:{
+              Icon:true
+            }
+          }
         },
         skip,
         take: Number(limit),
@@ -226,7 +231,7 @@ class ZoneService {
    * @param {number} limit - Number of random zones to return
    * @returns {Promise<Array>} - List of random zones with property counts
    */
-  async getRandomZonesWithPropertyCounts(limit = 3) {
+  async getRandomZonesWithPropertyCounts(limit=20) {
     try {
       // Get all zones first
       const allZones = await prisma.zone.findMany({
@@ -251,12 +256,12 @@ class ZoneService {
       // Filter out zones with no properties
       const zonesWithProperties = allZones.filter(zone => zone._count.properties > 0);
       
-      // Shuffle and get random zones
-      const shuffled = [...zonesWithProperties].sort(() => 0.5 - Math.random());
-      const randomZones = shuffled.slice(0, limit);
+      // Calculate total properties count
+      const totalPropertiesCount = zonesWithProperties.reduce((sum, zone) => sum + zone._count.properties, 0);
+      console.log(`Total properties in the system: ${totalPropertiesCount}`);
       
       // Format the response
-      const formattedZones = randomZones.map(zone => ({
+      const formattedZones = zonesWithProperties.map(zone => ({
         id: zone.id,
         name: zone.name,
         name_en: zone.nameEn,

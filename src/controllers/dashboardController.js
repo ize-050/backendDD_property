@@ -28,10 +28,10 @@ class DashboardController {
           
           // Properties by type
           prisma.property.groupBy({
-            by: ['propertyType'],
+            by: ['propertyTypeId'],
             where: { userId: parseInt(userId) },
             _count: {
-              propertyType: true
+              propertyTypeId:true
             }
           }),
           
@@ -40,7 +40,7 @@ class DashboardController {
             // First get all properties that belong to this user
             const userProperties = await tx.property.findMany({
               where: { userId: parseInt(userId) },
-              select: { id: true }
+              select: { id: true },
             });
             
             // Extract property IDs
@@ -160,8 +160,8 @@ class DashboardController {
         
         totalProperties = userPropertiesCount;
         propertiesByType = userPropertiesByType.map(item => ({
-          propertyType: item.propertyType,
-          count: item._count.propertyType
+          propertyType: item.propertyTypeId,
+          count: item._count.propertyTypeId
         }));
         totalMessages = userMessages;
         messagesByStatus = userMessagesByStatus || [];

@@ -7,6 +7,39 @@ const { validationResult } = require('express-validator');
  */
 class PropertyController {
   /**
+   * Duplicate a property
+   * @route POST /api/properties/:id/duplicate
+   */
+  async duplicateProperty(req, res, next) {
+    try {
+      const { id } = req.params;
+      
+      // Validate that the property exists and belongs to the user
+      const property = await propertyService.getPropertyById(id);
+      
+      if (!property) {
+        throw new ApiError(404, 'Property not found');
+      }
+      
+      // Check ownership if not admin
+      if (!req.user.isAdmin && property.userId !== req.user.id) {
+        throw new ApiError(403, 'You do not have permission to duplicate this property');
+      }
+      
+      // Duplicate the property
+      const duplicatedProperty = await propertyService.duplicateProperty(id, req.user.id);
+      
+      res.status(201).json({
+        status: 'success',
+        message: 'Property duplicated successfully',
+        data: duplicatedProperty
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+  
+  /**
    * Get all properties
    * @route GET /api/properties
    */
@@ -111,7 +144,8 @@ class PropertyController {
         return field;
       };
 
-      // Process form data - convert numeric fields and parse JSON strings
+      const propertyType = req.body.propertyType;
+      delete req.body.propertyType;
       const propertyData = {
         ...req.body,
         // Convert numeric fields
@@ -134,6 +168,8 @@ class PropertyController {
         views: parseJsonField(req.body.views),
         facilities: parseJsonField(req.body.facilities),
         amenities: parseJsonField(req.body.amenities),
+        property_type_id: Number(propertyType),
+        
         labels: parseJsonField(req.body.labels),
         unitPlans: parseJsonField(req.body.unitPlans),
         floorPlans: parseJsonField(req.body.floorPlans),
@@ -145,7 +181,6 @@ class PropertyController {
         translatedDescriptions: parseJsonField(req.body.translatedDescriptions),
         translatedPaymentPlans: parseJsonField(req.body.translatedPaymentPlans),
       };
-      console.log('propertyData.images:', propertyData.images);
       const property = await propertyService.createProperty(propertyData, req.user.id);
       res.status(201).json({
         status: 'success',
@@ -198,6 +233,7 @@ class PropertyController {
         replaceImages: req.body.replaceImages,
         newImages: req.body.newImages,
         existingImageMetadata: req.body.existingImageMetadata,
+        property_type_id: Number(req.body.propertyType),
 
         
         // Parse JSON strings for various fields using the helper method
