@@ -34,14 +34,16 @@ app.use('/static', express.static('public', {
   }
 }));
 
-app.use('/images', express.static('public/images', {
+// Serve icons directory
+app.use('/icons', express.static('public/images/icons', {
   setHeaders: (res) => {
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Cross-Origin-Resource-Policy', 'cross-origin');
   }
 }));
 
-app.use('/icons', express.static('public/images/icons', {
+// Serve all public images
+app.use('/images', express.static('public/images', {
   setHeaders: (res) => {
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Cross-Origin-Resource-Policy', 'cross-origin');
