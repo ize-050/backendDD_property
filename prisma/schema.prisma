@@ -142,12 +142,21 @@ model Property {
   socialMedia String? @db.LongText @map("social_media") // ข้อมูลโซเชียลมีเดีย (JSON string format: {"youtubeUrl": "...", "tiktokUrl": "..."})
   contactInfo String? @db.LongText @map("contact_info") // ข้อมูลติดต่อ (JSON string format: {"phone": "...", "email": "...", "lineId": "..."})
 
+  // ข้อมูล Co-Agent Accept
+  coAgentAccept     Boolean? @default(false) @map("co_agent_accept") // การยอมรับ Co-Agent
+  commissionType    String?  @map("commission_type") // ประเภทค่าคอมมิชชั่น: 'percent' หรือ 'amount'
+  commissionPercent String?  @map("commission_percent") // เปอร์เซ็นต์ค่าคอมมิชชั่น
+  commissionAmount  String?  @map("commission_amount") // จำนวนเงินค่าคอมมิชชั่น
+  privateNote       String?  @db.Text @map("private_note") // บันทึกส่วนตัว
+
   // ข้อมูลเพิ่มเติม
-  status    String    @default("ACTIVE") // สถานะทรัพย์สิน
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  deletedAt DateTime? @map("deleted_at") // วันที่ลบ (สำหรับ soft delete)
-  userId    Int       @map("user_id") // ผู้สร้างข้อมูล
+  status      String    @default("ACTIVE") // เปิด/ปิด ประกาศ
+  isPublished Boolean   @default(true) @map("is_published") // เปิด/ปิด การแสดงประกาศ
+  isFeatured  Boolean   @default(false) @map("is_featured") // แสดงในหน้าแรก (Popular/Random)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at") // วันที่ลบ (สำหรับ soft delete)
+  userId      Int       @map("user_id") // ผู้สร้างข้อมูล
   user      User      @relation(fields: [userId], references: [id])
 
   // Relations

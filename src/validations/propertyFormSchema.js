@@ -58,15 +58,15 @@ const propertyFormValidation = [
     .isFloat({ min: 0 }).withMessage('Usable area must be a positive number'),
   
   // Land info
-  body('landSizeRai')
+  body('land_size_rai')
     .optional()
     .isFloat({ min: 0 }).withMessage('Land size (rai) must be a positive number'),
   
-  body('landSizeNgan')
+  body('land_size_ngan')
     .optional()
     .isFloat({ min: 0 }).withMessage('Land size (ngan) must be a positive number'),
   
-  body('landSizeSqWah')
+  body('land_size_sq_wah')
     .optional()
     .isFloat({ min: 0 }).withMessage('Land size (sq. wah) must be a positive number'),
   
@@ -111,7 +111,7 @@ const propertyFormValidation = [
   
   body('furnishing')
     .optional()
-    .isIn(['UNFURNISHED', 'PARTIALLY_FURNISHED', 'FULLY_FURNISHED'])
+    .isString()
     .withMessage('Invalid furnishing type'),
   
   body('constructionYear')

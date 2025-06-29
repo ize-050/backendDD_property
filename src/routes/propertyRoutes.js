@@ -49,6 +49,12 @@ router.delete('/:id',
   propertyController.deleteProperty
 );
 
+// Update property status
+router.put('/:id/status',
+  authMiddleware.authenticate,
+  propertyController.updatePropertyStatus
+);
+
 // Duplicate property
 router.post('/:id/duplicate',
   authMiddleware.authenticate,

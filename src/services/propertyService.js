@@ -622,6 +622,39 @@ class PropertyService {
       throw error;
     }
   }
+
+  /**
+   * Update property status only
+   * @param {string} propertyId - ID of the property to update
+   * @param {string} status - New status value (ACTIVE or INACTIVE)
+   * @returns {Promise<Object>} - The updated property
+   */
+  async updatePropertyStatus(propertyId, status) {
+    try {
+      let statusBoolean = false;
+      if (status === 'ACTIVE') {
+        statusBoolean = true;
+      }
+      else {
+        statusBoolean = false;
+      }
+      return await prisma.property.update({
+        where: { id: parseInt(propertyId) },
+        data: {
+          isPublished: statusBoolean,
+          updatedAt: new Date()
+        },
+        select: {
+          id: true,
+          status: true,
+          updatedAt: true
+        }
+      });
+    } catch (error) {
+      console.error('Error updating property status:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new PropertyService();

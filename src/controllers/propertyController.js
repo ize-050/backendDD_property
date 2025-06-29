@@ -180,6 +180,9 @@ class PropertyController {
         translatedTitles: parseJsonField(req.body.translatedTitles),
         translatedDescriptions: parseJsonField(req.body.translatedDescriptions),
         translatedPaymentPlans: parseJsonField(req.body.translatedPaymentPlans),
+        
+        // Convert boolean fields
+        isFeatured: req.body.isFeatured === 'true' || req.body.isFeatured === true,
       };
       const property = await propertyService.createProperty(propertyData, req.user.id);
       res.status(201).json({
@@ -253,6 +256,9 @@ class PropertyController {
         translatedTitles: parseJsonField(req.body.translatedTitles),
         translatedDescriptions: parseJsonField(req.body.translatedDescriptions),
         translatedPaymentPlans: parseJsonField(req.body.translatedPaymentPlans),
+        
+        // Convert boolean fields
+        isFeatured: req.body.isFeatured === 'true' || req.body.isFeatured === true,
       };
 
       // Process images, floor plans และ unit plans
@@ -731,6 +737,48 @@ class PropertyController {
         message: 'Failed to get next property code',
         error: error.message 
       });
+    }
+  }
+
+  /**
+   * Update property status
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   * @returns {Promise<void>}
+   */
+  async updatePropertyStatus(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      // Validate status value
+      const validStatuses = ['ACTIVE', 'INACTIVE'];
+      if (!validStatuses.includes(status)) {
+        throw new ApiError(400, 'Invalid status. Must be ACTIVE or INACTIVE');
+      }
+
+      // Check if property exists and user has permission
+      const property = await propertyService.getPropertyById(id);
+      if (!property) {
+        throw new ApiError(404, 'Property not found');
+      }
+
+
+      // Update only the status field
+      const updatedProperty = await propertyService.updatePropertyStatus(id, status);
+
+      res.status(200).json({
+        status: 'success',
+        message: 'Property status updated successfully',
+        data: {
+          id: updatedProperty.id,
+          status: updatedProperty.status,
+          updatedAt: updatedProperty.updatedAt
+        }
+      });
+    } catch (error) {
+      next(error);
     }
   }
 

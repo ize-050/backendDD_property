@@ -222,6 +222,13 @@ class PropertyRepository {
       property.contactInfo = property.contactInfo || {};
     }
 
+    // Ensure Co-Agent fields are included in response
+    property.coAgentAccept = property.coAgentAccept || false;
+    property.commissionType = property.commissionType || null;
+    property.commissionPercent = property.commissionPercent || null;
+    property.commissionAmount = property.commissionAmount || null;
+    property.privateNote = property.privateNote || null;
+
     return property;
   }
 
@@ -345,9 +352,9 @@ class PropertyRepository {
           usableArea: data.usableArea ? parseFloat(data.usableArea) : null,
           
           // Land info
-          landSizeRai: data.landSizeRai ? parseFloat(data.landSizeRai) : null,
-          landSizeNgan: data.landSizeNgan ? parseFloat(data.landSizeNgan) : null,
-          landSizeSqWah: data.landSizeSqWah ? parseFloat(data.landSizeSqWah) : null,
+          landSizeRai: data.land_size_rai ? parseFloat(data.land_size_rai) : null,
+          landSizeNgan: data.land_size_ngan ? parseFloat(data.land_size_ngan) : null,
+          landSizeSqWah: data.land_size_sq_wah ? parseFloat(data.land_size_sq_wah) : null,
           landWidth: data.landWidth ? parseFloat(data.landWidth) : null,
           landLength: data.landLength ? parseFloat(data.landLength) : null,
           landShape: data.landShape,
@@ -377,8 +384,19 @@ class PropertyRepository {
           socialMedia: data.socialMedia ? JSON.stringify(data.socialMedia) : null,
           contactInfo: data.contactInfo ? JSON.stringify(data.contactInfo) : null,
           
+          // Co-Agent Accept fields
+          coAgentAccept: data.coAgentAccept === true || data.coAgentAccept === 'true' || data.coAgentAccept === '1',
+          commissionType: data.commissionType ? 
+            (data.commissionType === 'percent' ? 'PERCENT' : 
+             data.commissionType === 'amount' ? 'FIXED_AMOUNT' : 
+             data.commissionType) : null,
+          commissionPercent: data.commissionPercent || null,
+          commissionAmount: data.commissionAmount || null,
+          privateNote: data.privateNote || null,
+          
           // Status and metadata
           status: data.status || 'ACTIVE',
+          isFeatured: data.isFeatured === true || data.isFeatured === 'true',
 
           // User relation
           userId:  data.userId ? parseInt(data.userId) : 1,
@@ -561,9 +579,9 @@ class PropertyRepository {
       usableArea: data.usableArea ? parseFloat(data.usableArea) : null,
 
       // Land info
-      landSizeRai: data.landSizeRai ? parseFloat(data.landSizeRai) : null,
-      landSizeNgan: data.landSizeNgan ? parseFloat(data.landSizeNgan) : null,
-      landSizeSqWah: data.landSizeSqWah ? parseFloat(data.landSizeSqWah) : null,
+      landSizeRai: data.land_size_rai ? parseFloat(data.land_size_rai) : null,
+      landSizeNgan: data.land_size_ngan ? parseFloat(data.land_size_ngan) : null,
+      landSizeSqWah: data.land_size_sq_wah ? parseFloat(data.land_size_sq_wah) : null,
       landWidth: data.landWidth ? parseFloat(data.landWidth) : null,
       landLength: data.landLength ? parseFloat(data.landLength) : null,
       landShape: data.landShape,
@@ -593,8 +611,19 @@ class PropertyRepository {
       socialMedia: data.socialMedia ? JSON.stringify(data.socialMedia) : null,
       contactInfo: data.contactInfo ? JSON.stringify(data.contactInfo) : null,
 
+      // Co-Agent Accept fields
+      coAgentAccept: data.coAgentAccept === true || data.coAgentAccept === 'true' || data.coAgentAccept === '1',
+      commissionType: data.commissionType ? 
+        (data.commissionType === 'percent' ? 'PERCENT' : 
+         data.commissionType === 'amount' ? 'FIXED_AMOUNT' : 
+         data.commissionType) : null,
+      commissionPercent: data.commissionPercent || null,
+      commissionAmount: data.commissionAmount || null,
+      privateNote: data.privateNote || null,
+
       // Status and metadata
       status: data.status || 'ACTIVE',
+      isFeatured: data.isFeatured === true || data.isFeatured === 'true',
       videoUrl: data.videoUrl,
     };
 
@@ -715,7 +744,7 @@ class PropertyRepository {
             data: data.listings.map(listing => ({
               ...listing,
               price: listing.price ? parseFloat(listing.price) : 0,
-              userId: data.userId ? parseInt(data.userId) : property.userId,
+              userId:  data.userId ? parseInt(data.userId) : property.userId,
               promotionalPrice: listing.promotionalPrice ? parseFloat(listing.promotionalPrice) : null,
               status: listing.status || 'ACTIVE',
               shortTerm3Months: listing.shortTerm3Months ? parseFloat(listing.shortTerm3Months) : null,
@@ -1339,15 +1368,16 @@ class PropertyRepository {
    */
   async getRandomProperties(count = 4) {
     try {
-      // Get properties with their images and listings
-      const properties = await prisma.property.findMany({
-        take: Number(count),
-        orderBy: {
-          // Use random ordering
-          id: 'asc',
-        },
-        where:{
+      // Get featured properties first, then random properties
+      const featuredProperties = await prisma.property.findMany({
+        take: Math.ceil(Number(count) / 2), // Take half as featured
+        orderBy: [
+          { isFeatured: 'desc' }, // Featured properties first
+          { createdAt: 'desc' }   // Then by newest
+        ],
+        where: {
           deletedAt: null,
+          isFeatured: true, // Only featured properties
         },
         include: {
           images: true,
@@ -1366,12 +1396,20 @@ class PropertyRepository {
         },
       });
 
-      // If we don't have enough properties, try again without filtering
-      if (properties.length < count) {
-        return await prisma.property.findMany({
-          take: count,
+      // Get remaining random properties (non-featured)
+      const remainingCount = Number(count) - featuredProperties.length;
+      let randomProperties = [];
+      
+      if (remainingCount > 0) {
+        randomProperties = await prisma.property.findMany({
+          take: remainingCount,
           orderBy: {
-            id: 'asc',
+            // Use random ordering for non-featured properties
+            createdAt: 'desc',
+          },
+          where: {
+            deletedAt: null,
+            isFeatured: false, // Only non-featured properties
           },
           include: {
             images: true,
@@ -1379,16 +1417,52 @@ class PropertyRepository {
             highlights: true,
             amenities: true,
             views: true,
-            labels:{
-              include:{
-                Icon:true
+            labels: {
+              where: {
+                active: true
+              },
+              include: {
+                Icon: true
               }
             }
           },
         });
       }
 
-      return properties;
+      // Combine featured and random properties
+      const allProperties = [...featuredProperties, ...randomProperties];
+
+      // If we still don't have enough properties, get any available properties
+      if (allProperties.length < count) {
+        const additionalProperties = await prisma.property.findMany({
+          take: count - allProperties.length,
+          orderBy: {
+            createdAt: 'desc',
+          },
+          where: {
+            deletedAt: null,
+            NOT: {
+              id: { in: allProperties.map(p => p.id) }
+            }
+          },
+          include: {
+            images: true,
+            listings: true,
+            highlights: true,
+            amenities: true,
+            views: true,
+            labels: {
+              include: {
+                Icon: true
+              }
+            }
+          },
+        });
+        
+        allProperties.push(...additionalProperties);
+      }
+
+      return allProperties;
     } catch (error) {
       console.error('Error in getRandomProperties:', error);
       throw error;
