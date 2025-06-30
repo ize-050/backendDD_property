@@ -232,6 +232,23 @@ class PropertyService {
   }
 
   /**
+   * Get property by ID for admin/owner access (includes unpublished properties)
+   */
+  async getPropertyByIdForAdmin(id) {
+    try {
+      const properties = await propertyRepository.findByIdForAdmin(id);
+
+      if (!properties) {
+        throw new ApiError(404, `Property with ID ${id} not found`);
+      }
+      return properties;
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new ApiError(500, 'Error fetching property', false, error.stack);
+    }
+  }
+
+  /**
    * Create new property
    */
   async createProperty(propertyData) {
@@ -447,7 +464,8 @@ class PropertyService {
           id: true
         },
         where:{
-          deletedAt:null
+          deletedAt:null,
+          isPublished: true // กรองเฉพาะรายการที่ publish แล้ว
         }
       });
       

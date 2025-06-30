@@ -444,6 +444,10 @@ export async function GET(req) {
       prisma.property.findMany({
         skip,
         take: limit,
+        where: {
+          deletedAt: null, // กรองเฉพาะรายการที่ยังไม่ถูก soft delete
+          isPublished: true, // กรองเฉพาะรายการที่ publish แล้ว
+        },
         include: {
           images: {
             where: { isFeatured: true },
@@ -466,7 +470,12 @@ export async function GET(req) {
           createdAt: 'desc',
         },
       }),
-      prisma.property.count(),
+      prisma.property.count({
+        where: {
+          deletedAt: null,
+          isPublished: true,
+        },
+      }),
     ]);
     
     // Calculate pagination metadata

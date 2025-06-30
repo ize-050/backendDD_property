@@ -69,15 +69,15 @@ const upload = multer({
   fileFilter: fileFilter,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB max file size
-    files: 30 // Max 30 files per request
+    files: 80 // Max 80 files per request (50 + 15 + 15)
   }
 });
 
 // Middleware for handling property images upload
 const uploadFields = upload.fields([
-  { name: 'images', maxCount: 10 },
-  { name: 'floorPlanImages', maxCount: 10 },
-  { name: 'unitPlanImages', maxCount: 10 }
+  { name: 'images', maxCount: 50 },
+  { name: 'floorPlanImages', maxCount: 15 },
+  { name: 'unitPlanImages', maxCount: 15 }
 ]);
 
 // Middleware for handling form data with images
@@ -85,6 +85,13 @@ const handlePropertyFormData = (req, res, next) => {
   uploadFields(req, res, function (err) {
     if (err instanceof multer.MulterError) {
       // A Multer error occurred when uploading
+      if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_FIELD_COUNT') {
+        return res.status(400).json({
+          status: 'error',
+          message: 'จำนวนรูปภาพเกิน 50 รูป กรุณาเลือกรูปภาพไม่เกิน 50 รูป',
+          error: 'IMAGE_LIMIT_EXCEEDED'
+        });
+      }
       return next(new ApiError(400, `Upload error: ${err.message}`));
     } else if (err) {
       // An unknown error occurred

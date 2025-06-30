@@ -109,7 +109,18 @@ class PropertyController {
    */
   async getPropertyById(req, res, next) {
     try {
-      const property = await propertyService.getPropertyById(req.params.id);
+      // Check if user is authenticated (has authorization header)
+      const isAuthenticated = req.headers.authorization || req.user;
+      
+      let property;
+      if (isAuthenticated) {
+        // For authenticated users (admin/owner), get property even if unpublished
+        property = await propertyService.getPropertyByIdForAdmin(req.params.id);
+      } else {
+        // For public access, only get published properties
+        property = await propertyService.getPropertyById(req.params.id);
+      }
+      
       res.status(200).json({
         status: 'success',
         data: property,
@@ -759,7 +770,7 @@ class PropertyController {
       }
 
       // Check if property exists and user has permission
-      const property = await propertyService.getPropertyById(id);
+      const property = await propertyService.getPropertyByIdForAdmin(id);
       if (!property) {
         throw new ApiError(404, 'Property not found');
       }

@@ -22,8 +22,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
 }));
 
-app.use(express.json()); // Parse JSON request body
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded request body
+app.use(express.json({ limit: '50mb' })); // Parse JSON request body with larger limit
+app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Parse URL-encoded request body with larger limit
 app.use(morgan('dev')); // HTTP request logger
 
 // Serve static files from the public directory with CORS headers

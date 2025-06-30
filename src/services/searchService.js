@@ -32,7 +32,10 @@ class SearchService {
       const skip = (page - 1) * Number(limit);
       
       // Build filter conditions
-      const where = {};
+      const where = {
+        deletedAt: null, // กรองเฉพาะรายการที่ยังไม่ถูก soft delete
+        isPublished: true, // กรองเฉพาะรายการที่ publish แล้ว
+      };
       
       // Property type filter
       if (propertyType) {

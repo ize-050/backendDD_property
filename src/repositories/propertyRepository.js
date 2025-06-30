@@ -233,6 +233,76 @@ class PropertyRepository {
   }
 
   /**
+   * Find property by ID for admin/owner access (without isPublished filter)
+   */
+  async findByIdForAdmin(id) {
+    const property = await prisma.property.findFirst({
+      where: { 
+        id: Number(id),
+        deletedAt: null // กรองเฉพาะรายการที่ยังไม่ถูก soft delete
+      },
+      include: {
+        images: true,
+        features:true,
+        listings: true,
+        highlights:{
+          where: {
+            active: true
+          },
+          include:{
+            Icon: true
+          }
+        },
+        facilities:{
+          where: {
+            active: true
+          },
+          include:{
+            Icon: true
+          }
+        },
+        amenities:{
+          where: {
+            active: true
+          },
+          include:{
+            Icon: true
+          }
+        },
+        views:{
+          where: {
+            active: true
+          },
+          include:{
+            Icon: true
+          }
+        },
+        labels:{
+          include:{
+            Icon:true
+          }
+        },
+        unitPlans: true,
+        floorPlans: true,
+        user:true,
+      },
+    });
+
+    if (!property) {
+      return null;
+    }
+
+    // Ensure Co-Agent fields are included in response
+    property.coAgentAccept = property.coAgentAccept || false;
+    property.commissionType = property.commissionType || null;
+    property.commissionPercent = property.commissionPercent || null;
+    property.commissionAmount = property.commissionAmount || null;
+    property.privateNote = property.privateNote || null;
+
+    return property;
+  }
+
+  /**
    * Create new property with transaction support
    * @param {Object} data - Property data from frontend
    * @returns {Promise} - Created property
@@ -386,10 +456,7 @@ class PropertyRepository {
           
           // Co-Agent Accept fields
           coAgentAccept: data.coAgentAccept === true || data.coAgentAccept === 'true' || data.coAgentAccept === '1',
-          commissionType: data.commissionType ? 
-            (data.commissionType === 'percent' ? 'PERCENT' : 
-             data.commissionType === 'amount' ? 'FIXED_AMOUNT' : 
-             data.commissionType) : null,
+          commissionType: data.commissionType || null,
           commissionPercent: data.commissionPercent || null,
           commissionAmount: data.commissionAmount || null,
           privateNote: data.privateNote || null,
@@ -613,10 +680,7 @@ class PropertyRepository {
 
       // Co-Agent Accept fields
       coAgentAccept: data.coAgentAccept === true || data.coAgentAccept === 'true' || data.coAgentAccept === '1',
-      commissionType: data.commissionType ? 
-        (data.commissionType === 'percent' ? 'PERCENT' : 
-         data.commissionType === 'amount' ? 'FIXED_AMOUNT' : 
-         data.commissionType) : null,
+      commissionType: data.commissionType || null,
       commissionPercent: data.commissionPercent || null,
       commissionAmount: data.commissionAmount || null,
       privateNote: data.privateNote || null,
@@ -1377,6 +1441,7 @@ class PropertyRepository {
         ],
         where: {
           deletedAt: null,
+          isPublished: true,
           isFeatured: true, // Only featured properties
         },
         include: {
@@ -1409,6 +1474,7 @@ class PropertyRepository {
           },
           where: {
             deletedAt: null,
+            isPublished: true,
             isFeatured: false, // Only non-featured properties
           },
           include: {
@@ -1441,6 +1507,8 @@ class PropertyRepository {
           },
           where: {
             deletedAt: null,
+            isPublished: true,
+            isFeatured:true,
             NOT: {
               id: { in: allProperties.map(p => p.id) }
             }
