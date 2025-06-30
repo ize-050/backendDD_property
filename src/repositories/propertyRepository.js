@@ -61,7 +61,7 @@ class PropertyRepository {
       where.userId = Number(userId);
     }
 
-    if (propertyType) where.property_type_id = Number(propertyType);
+    if (propertyType) where.propertyTypeId = Number(propertyType);
     if (listingType) where.listingType = listingType;
     if (city) where.city = city;
     if (bedrooms) where.bedrooms = Number(bedrooms);
@@ -624,7 +624,7 @@ class PropertyRepository {
       projectName: data.projectName,
       propertyCode: data.propertyCode || data.propertyId,
       referenceId: data.referenceId,
-      propertyTypeId: data.property_type_id,
+      propertyTypeId:  data.property_type_id,
 
       // Address info
       address: data.address,
