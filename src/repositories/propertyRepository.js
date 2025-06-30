@@ -1432,13 +1432,8 @@ class PropertyRepository {
    */
   async getRandomProperties(count = 4) {
     try {
-      // Get featured properties first, then random properties
-      const featuredProperties = await prisma.property.findMany({
-        take: Math.ceil(Number(count) / 2), // Take half as featured
-        orderBy: [
-          { isFeatured: 'desc' }, // Featured properties first
-          { createdAt: 'desc' }   // Then by newest
-        ],
+      // Get all properties that match criteria
+      const allProperties = await prisma.property.findMany({
         where: {
           deletedAt: null,
           isPublished: true,
@@ -1461,21 +1456,19 @@ class PropertyRepository {
         },
       });
 
-      // Get remaining random properties (non-featured)
-      const remainingCount = Number(count) - featuredProperties.length;
-      let randomProperties = [];
-      
-      if (remainingCount > 0) {
-        randomProperties = await prisma.property.findMany({
-          take: remainingCount,
-          orderBy: {
-            // Use random ordering for non-featured properties
-            createdAt: 'desc',
-          },
+      // Randomly shuffle the array and take the required count
+      const shuffled = allProperties.sort(() => Math.random() - 0.5);
+      const selectedProperties = shuffled.slice(0, Number(count));
+
+      // If we don't have enough featured properties, get random from all published properties
+      if (selectedProperties.length < count) {
+        const additionalProperties = await prisma.property.findMany({
           where: {
             deletedAt: null,
             isPublished: true,
-            isFeatured: false, // Only non-featured properties
+            NOT: {
+              id: { in: selectedProperties.map(p => p.id) }
+            }
           },
           include: {
             images: true,
@@ -1493,44 +1486,15 @@ class PropertyRepository {
             }
           },
         });
+
+        // Randomly shuffle additional properties and take what we need
+        const shuffledAdditional = additionalProperties.sort(() => Math.random() - 0.5);
+        const needed = Number(count) - selectedProperties.length;
+        selectedProperties.push(...shuffledAdditional.slice(0, needed));
       }
 
-      // Combine featured and random properties
-      const allProperties = [...featuredProperties, ...randomProperties];
-
-      // If we still don't have enough properties, get any available properties
-      if (allProperties.length < count) {
-        const additionalProperties = await prisma.property.findMany({
-          take: count - allProperties.length,
-          orderBy: {
-            createdAt: 'desc',
-          },
-          where: {
-            deletedAt: null,
-            isPublished: true,
-            isFeatured:true,
-            NOT: {
-              id: { in: allProperties.map(p => p.id) }
-            }
-          },
-          include: {
-            images: true,
-            listings: true,
-            highlights: true,
-            amenities: true,
-            views: true,
-            labels: {
-              include: {
-                Icon: true
-              }
-            }
-          },
-        });
-        
-        allProperties.push(...additionalProperties);
-      }
-
-      return allProperties;
+      // Final shuffle to mix featured and non-featured properties
+      return selectedProperties.sort(() => Math.random() - 0.5);
     } catch (error) {
       console.error('Error in getRandomProperties:', error);
       throw error;
@@ -1560,9 +1524,14 @@ class PropertyRepository {
     if (search) {
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },
+        { projectName: { contains: search, mode: 'insensitive' } },
         { description: { contains: search, mode: 'insensitive' } },
         { address: { contains: search, mode: 'insensitive' } },
-        { city: { contains: search, mode: 'insensitive' } }
+        { reference: { contains: search, mode: 'insensitive' } },
+        { propertyCode: { contains: search, mode: 'insensitive' } },
+        { city: { contains: search, mode: 'insensitive' } },
+        { district: { contains: search, mode: 'insensitive' } },
+        { province: { contains: search, mode: 'insensitive' } }
       ];
     }
 

@@ -59,15 +59,15 @@ const propertyFormValidation = [
   
   // Land info
   body('land_size_rai')
-    .optional()
+    .optional({ checkFalsy: true })
     .isFloat({ min: 0 }).withMessage('Land size (rai) must be a positive number'),
   
   body('land_size_ngan')
-    .optional()
+    .optional({ checkFalsy: true })
     .isFloat({ min: 0 }).withMessage('Land size (ngan) must be a positive number'),
   
   body('land_size_sq_wah')
-    .optional()
+    .optional({ checkFalsy: true })
     .isFloat({ min: 0 }).withMessage('Land size (sq. wah) must be a positive number'),
   
   body('landWidth')
@@ -116,7 +116,7 @@ const propertyFormValidation = [
   
   body('constructionYear')
     .optional()
-    .isInt({ min: 1900, max: new Date().getFullYear() })
+    .isInt({ min: 1900 })
     .withMessage(`Construction year must be between 1900 and ${new Date().getFullYear()}`),
   
   body('communityFee')
