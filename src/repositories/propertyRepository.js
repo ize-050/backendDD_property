@@ -277,6 +277,14 @@ class PropertyRepository {
             Icon: true
           }
         },
+        nearbyPlaces:{
+          where: {
+            active: true
+          },
+          include:{
+            Icon: true
+          }
+        },
         labels:{
           include:{
             Icon:true

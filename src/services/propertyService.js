@@ -25,7 +25,14 @@ class PropertyService {
             images: true,
             features: true,
             amenities: true,
-            locations: true
+            locations: true,
+            nearbyPlaces: true,
+            highlights: true,
+            facilities: true,
+            views: true,
+            labels: true,
+            floorPlans: true,
+            unitPlans: true
           }
         });
 
@@ -122,17 +129,163 @@ class PropertyService {
           }
         }
 
+        // 9. Duplicate nearbyPlaces
+        if (originalProperty.nearbyPlaces && originalProperty.nearbyPlaces.length > 0) {
+          for (const nearbyPlace of originalProperty.nearbyPlaces) {
+            const { id, propertyId, createdAt, updatedAt, ...nearbyData } = nearbyPlace;
+            await prismaClient.nearbyPlace.create({
+              data: {
+                ...nearbyData,
+                propertyId: newProperty.id
+              }
+            });
+          }
+        }
+
+        // 10. Duplicate highlights
+        if (originalProperty.highlights && originalProperty.highlights.length > 0) {
+          for (const highlight of originalProperty.highlights) {
+            const { id, propertyId, createdAt, updatedAt, ...highlightData } = highlight;
+            await prismaClient.highlight.create({
+              data: {
+                ...highlightData,
+                propertyId: newProperty.id
+              }
+            });
+          }
+        }
+
+        // 11. Duplicate facilities
+        if (originalProperty.facilities && originalProperty.facilities.length > 0) {
+          for (const facility of originalProperty.facilities) {
+            const { id, propertyId, createdAt, updatedAt, ...facilityData } = facility;
+            await prismaClient.facility.create({
+              data: {
+                ...facilityData,
+                propertyId: newProperty.id
+              }
+            });
+          }
+        }
+
+        // 12. Duplicate views
+        if (originalProperty.views && originalProperty.views.length > 0) {
+          for (const view of originalProperty.views) {
+            const { id, propertyId, createdAt, updatedAt, ...viewData } = view;
+            await prismaClient.view.create({
+              data: {
+                ...viewData,
+                propertyId: newProperty.id
+              }
+            });
+          }
+        }
+
+        // 13. Duplicate labels
+        if (originalProperty.labels && originalProperty.labels.length > 0) {
+          for (const label of originalProperty.labels) {
+            const { id, propertyId, createdAt, updatedAt, ...labelData } = label;
+            await prismaClient.label.create({
+              data: {
+                ...labelData,
+                propertyId: newProperty.id
+              }
+            });
+          }
+        }
+
+        // 14. Duplicate floorPlans
+        if (originalProperty.floorPlans && originalProperty.floorPlans.length > 0) {
+          for (const floorPlan of originalProperty.floorPlans) {
+            const { id, propertyId, createdAt, updatedAt, ...floorPlanData } = floorPlan;
+            await prismaClient.floorPlan.create({
+              data: {
+                ...floorPlanData,
+                propertyId: newProperty.id
+              }
+            });
+          }
+        }
+
+        // 15. Duplicate unitPlans
+        if (originalProperty.unitPlans && originalProperty.unitPlans.length > 0) {
+          for (const unitPlan of originalProperty.unitPlans) {
+            const { id, propertyId, createdAt, updatedAt, ...unitPlanData } = unitPlan;
+            await prismaClient.unitPlan.create({
+              data: {
+                ...unitPlanData,
+                propertyId: newProperty.id
+              }
+            });
+          }
+        }
+
         // Return the newly created property with all its relations
-        return await prismaClient.property.findUnique({
+        const duplicatedProperty = await prismaClient.property.findUnique({
           where: { id: newProperty.id },
           include: {
             listings: true,
             images: true,
             features: true,
-            amenities: true,
-            locations: true
+            amenities: {
+              where: { active: true },
+              include: { Icon: true }
+            },
+            locations: true,
+            nearbyPlaces: {
+              where: { active: true },
+              include: { Icon: true }
+            },
+            highlights: {
+              where: { active: true },
+              include: { Icon: true }
+            },
+            facilities: {
+              where: { active: true },
+              include: { Icon: true }
+            },
+            views: {
+              where: { active: true },
+              include: { Icon: true }
+            },
+            labels: {
+              where: { active: true },
+              include: { Icon: true }
+            },
+            floorPlans: true,
+            unitPlans: true,
+            user: true
           }
         });
+
+        // Parse JSON fields like in the edit API
+        try {
+          if (duplicatedProperty.translatedTitles && typeof duplicatedProperty.translatedTitles === 'string') {
+            duplicatedProperty.translatedTitles = JSON.parse(duplicatedProperty.translatedTitles);
+          }
+          if (duplicatedProperty.translatedDescriptions && typeof duplicatedProperty.translatedDescriptions === 'string') {
+            duplicatedProperty.translatedDescriptions = JSON.parse(duplicatedProperty.translatedDescriptions);
+          }
+          if (duplicatedProperty.translatedPaymentPlans && typeof duplicatedProperty.translatedPaymentPlans === 'string') {
+            duplicatedProperty.translatedPaymentPlans = JSON.parse(duplicatedProperty.translatedPaymentPlans);
+          }
+          if (duplicatedProperty.contactInfo && typeof duplicatedProperty.contactInfo === 'string') {
+            duplicatedProperty.contactInfo = JSON.parse(duplicatedProperty.contactInfo);
+          }
+          if (duplicatedProperty.socialMedia && typeof duplicatedProperty.socialMedia === 'string') {
+            duplicatedProperty.socialMedia = JSON.parse(duplicatedProperty.socialMedia);
+          }
+        } catch (error) {
+          console.error('Error parsing JSON fields in duplicateProperty:', error);
+          // Set to empty objects if parsing fails
+          duplicatedProperty.translatedTitles = duplicatedProperty.translatedTitles || {};
+          duplicatedProperty.translatedDescriptions = duplicatedProperty.translatedDescriptions || {};
+          duplicatedProperty.translatedPaymentPlans = duplicatedProperty.translatedPaymentPlans || {};
+          duplicatedProperty.contactInfo = duplicatedProperty.contactInfo || {};
+          duplicatedProperty.socialMedia = duplicatedProperty.socialMedia || {};
+        }
+
+        return duplicatedProperty;
       });
     } catch (error) {
       console.error('Error duplicating property:', error);
