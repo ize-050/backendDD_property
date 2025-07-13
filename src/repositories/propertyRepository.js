@@ -133,6 +133,7 @@ class PropertyRepository {
     const property = await prisma.property.findFirst({
       where: { 
         id: Number(id),
+        isPublished: true, // Only fetch published properties
         deletedAt: null // กรองเฉพาะรายการที่ยังไม่ถูก soft delete
       },
       include: {
@@ -190,6 +191,7 @@ class PropertyRepository {
         unitPlans: true,
         floorPlans: true,
         user:true,
+        propertyType: true,
       },
     });
 
@@ -229,6 +231,7 @@ class PropertyRepository {
     property.commissionAmount = property.commissionAmount || null;
     property.privateNote = property.privateNote || null;
 
+   
     return property;
   }
 
@@ -1590,6 +1593,8 @@ class PropertyRepository {
     const totalPages = Math.ceil(total / limit);
     const hasNext = page < totalPages;
     const hasPrev = page > 1;
+
+    console.log("processedProperties",processedProperties);
 
     return {
       properties: processedProperties,

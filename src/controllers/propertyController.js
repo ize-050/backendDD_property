@@ -13,22 +13,22 @@ class PropertyController {
   async duplicateProperty(req, res, next) {
     try {
       const { id } = req.params;
-      
+
       // Validate that the property exists and belongs to the user
       const property = await propertyService.getPropertyById(id);
-      
+
       if (!property) {
         throw new ApiError(404, 'Property not found');
       }
-      
+
       // Check ownership if not admin
       if (!req.user.isAdmin && property.userId !== req.user.id) {
         throw new ApiError(403, 'You do not have permission to duplicate this property');
       }
-      
+
       // Duplicate the property
       const duplicatedProperty = await propertyService.duplicateProperty(id, req.user.id);
-      
+
       res.status(201).json({
         status: 'success',
         message: 'Property duplicated successfully',
@@ -38,7 +38,7 @@ class PropertyController {
       next(error);
     }
   }
-  
+
   /**
    * Get all properties
    * @route GET /api/properties
@@ -86,7 +86,7 @@ class PropertyController {
       next(error);
     }
   }
-  
+
   /**
    * Get property types with price statistics and counts
    * @route GET /api/properties/price-types
@@ -109,18 +109,10 @@ class PropertyController {
    */
   async getPropertyById(req, res, next) {
     try {
-      // Check if user is authenticated (has authorization header)
-      const isAuthenticated = req.headers.authorization || req.user;
-      
-      let property;
-      if (isAuthenticated) {
-        // For authenticated users (admin/owner), get property even if unpublished
-        property = await propertyService.getPropertyByIdForAdmin(req.params.id);
-      } else {
-        // For public access, only get published properties
-        property = await propertyService.getPropertyById(req.params.id);
-      }
-      
+
+      const property = await propertyService.getPropertyById(req.params.id);
+
+
       res.status(200).json({
         status: 'success',
         data: property,
@@ -161,7 +153,7 @@ class PropertyController {
         ...req.body,
         // Convert numeric fields
         userId: userId,
-        listings : JSON.parse(req.body.listings),
+        listings: JSON.parse(req.body.listings),
         bedrooms: req.body.bedrooms ? parseInt(req.body.bedrooms, 10) : undefined,
         bathrooms: req.body.bathrooms ? parseInt(req.body.bathrooms, 10) : undefined,
         area: req.body.area ? parseFloat(req.body.area) : undefined,
@@ -171,7 +163,7 @@ class PropertyController {
         shortTerm3Months: req.body.shortTerm3Months ? parseFloat(req.body.shortTerm3Months) : undefined,
         shortTerm6Months: req.body.shortTerm6Months ? parseFloat(req.body.shortTerm6Months) : undefined,
         shortTerm1Year: req.body.shortTerm1Year ? parseFloat(req.body.shortTerm1Year) : undefined,
-        zone_id : req.body.zone_id ? parseInt(req.body.zone_id, 10) : undefined,
+        zone_id: req.body.zone_id ? parseInt(req.body.zone_id, 10) : undefined,
         // Parse JSON strings for various fields
         features: parseJsonField(req.body.features),
         highlights: parseJsonField(req.body.highlights),
@@ -180,18 +172,18 @@ class PropertyController {
         facilities: parseJsonField(req.body.facilities),
         amenities: parseJsonField(req.body.amenities),
         property_type_id: Number(propertyType),
-        
+
         labels: parseJsonField(req.body.labels),
         unitPlans: parseJsonField(req.body.unitPlans),
         floorPlans: parseJsonField(req.body.floorPlans),
         contactInfo: parseJsonField(req.body.contactInfo),
         socialMedia: parseJsonField(req.body.socialMedia),
-        
+
         // Parse translations
         translatedTitles: parseJsonField(req.body.translatedTitles),
         translatedDescriptions: parseJsonField(req.body.translatedDescriptions),
         translatedPaymentPlans: parseJsonField(req.body.translatedPaymentPlans),
-        
+
         // Convert boolean fields
         isFeatured: req.body.isFeatured === 'true' || req.body.isFeatured === true,
       };
@@ -235,7 +227,7 @@ class PropertyController {
         ...req.body,
         // Convert numeric fields
         bedrooms: req.body.bedrooms ? parseInt(req.body.bedrooms, 10) : undefined,
-        listings : JSON.parse(req.body.listings),
+        listings: JSON.parse(req.body.listings),
         bathrooms: req.body.bathrooms ? parseInt(req.body.bathrooms, 10) : undefined,
         area: req.body.area ? parseFloat(req.body.area) : undefined,
         price: req.body.price ? parseFloat(req.body.price) : undefined,
@@ -249,7 +241,7 @@ class PropertyController {
         existingImageMetadata: req.body.existingImageMetadata,
         property_type_id: Number(req.body.propertyType),
 
-        
+
         // Parse JSON strings for various fields using the helper method
         features: parseJsonField(req.body.features),
         highlights: parseJsonField(req.body.highlights),
@@ -262,12 +254,12 @@ class PropertyController {
         floorPlans: parseJsonField(req.body.floorPlans),
         contactInfo: parseJsonField(req.body.contactInfo),
         socialMedia: parseJsonField(req.body.socialMedia),
-        
+
         // Parse translations
         translatedTitles: parseJsonField(req.body.translatedTitles),
         translatedDescriptions: parseJsonField(req.body.translatedDescriptions),
         translatedPaymentPlans: parseJsonField(req.body.translatedPaymentPlans),
-        
+
         // Convert boolean fields
         isFeatured: req.body.isFeatured === 'true' || req.body.isFeatured === true,
       };
@@ -335,7 +327,7 @@ class PropertyController {
         }
       });
 
-        console.log('Existing image metadata:', JSON.stringify(existingImageMetadata, null, 2));
+      console.log('Existing image metadata:', JSON.stringify(existingImageMetadata, null, 2));
 
       if (Object.keys(existingImageMetadata).length > 0) {
         propertyData.existingImageMetadata = {};
@@ -670,7 +662,7 @@ class PropertyController {
       next(error);
     }
   }
-  
+
   /**
    * Get properties for the authenticated user with pagination, search, and sorting
    * @route GET /api/properties/my-properties
@@ -743,10 +735,10 @@ class PropertyController {
       res.status(200).json({ success: true, propertyCode: nextCode });
     } catch (error) {
       console.error('Error getting next property code:', error);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         message: 'Failed to get next property code',
-        error: error.message 
+        error: error.message
       });
     }
   }

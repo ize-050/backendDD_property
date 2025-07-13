@@ -254,6 +254,7 @@ export async function POST(req) {
       landWidth: processedData.landWidth ? parseFloat(processedData.landWidth) : null,
       landLength: processedData.landLength ? parseFloat(processedData.landLength) : null,
       landShape: processedData.landShape,
+      
       landGrade: processedData.landGrade,
       landAccess: processedData.landAccess,
       ownershipType: processedData.ownershipType,
