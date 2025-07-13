@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,238 +7,445 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User model
 model User {
   id         Int               @id @default(autoincrement())
   email      String            @unique
   password   String
   name       String?
-  firstname  String?
-  lastname   String?
   phone      String?
-  phoneAlt   String?           @map("phone_alt") // เบอร์โทรสำรอง
+  phoneAlt   String?           @map("phone_alt")
   lineId     String?           @map("line_id")
   wechatId   String?           @map("wechat_id")
   whatsapp   String?
   facebook   String?
   instagram  String?
-  picture    String?
   role       Role              @default(USER)
   createdAt  DateTime          @default(now()) @map("created_at")
   updatedAt  DateTime          @updatedAt @map("updated_at")
+  firstname  String?
+  lastname   String?
+  picture    String?
+  blogs      Blog[]
   properties Property[]
   listings   PropertyListing[]
-  blogs      Blog[]
 
   @@map("users")
+}
+
+model Zone {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique
+  nameEn      String     @map("name_en")
+  nameTh      String?    @map("name_th")
+  description String?    @db.Text
+  city        String?
+  province    String
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  nameCh      String?    @map("name_ch")
+  nameRu      String?    @map("name_ru")
+  z_image     String?    @map("z_image")
+  properties  Property[]
+
+  @@map("zones")
+}
+
+model TypeProperty {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique
+  nameEn      String     @map("name_en")
+  nameTh      String?    @map("name_th")
+  nameCh      String?    @map("name_ch")
+  nameRu      String?    @map("name_ru")
+  p_image     String?    @map("z_image")
+  description String?    @db.Text
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  properties  Property[]
+
+  @@map("property_types")
+}
+
+model Property {
+  id                     Int                 @id @default(autoincrement())
+  title                  String
+  projectName            String              @map("project_name")
+  propertyCode           String?             @unique @map("property_code")
+  referenceId            String?             @map("reference_id")
+  address                String              @db.Text
+  searchAddress          String?             @map("search_address") @db.Text
+  district               String
+  subdistrict            String              @map("subdistrict")
+  province               String
+  city                   String?
+  country                String              @default("Thailand")
+  zipCode                String              @map("zip_code")
+  latitude               Float?              @map("lat")
+  longitude              Float?              @map("lng")
+  zoneId                 Int?                @map("zone_id")
+  area                   Float
+  usableArea             Float?              @map("usable_area")
+  landSizeRai            Float?              @map("land_size_rai")
+  landSizeNgan           Float?              @map("land_size_ngan")
+  landSizeSqWah          Float?              @map("land_size_sq_wah")
+  landWidth              Float?              @map("land_width")
+  landLength             Float?              @map("land_length")
+  landShape              LandShape?          @map("land_shape")
+  landGrade              LandGrade?          @map("land_grade")
+  landAccess             LandAccess?         @map("land_access")
+  ownershipType          OwnershipType?      @map("ownership_type")
+  ownershipQuota         String?             @map("ownership_quota")
+  bedrooms               Int?
+  bathrooms              Int?
+  floors                 Int?
+  furnishing             FurnishingType?     @default(UNFURNISHED)
+  constructionYear       Int?                @map("construction_year")
+  communityFee           Float?              @map("community_fee")
+  buildingUnit           String?             @map("building_unit")
+  floor                  Int?
+  description            String              @db.Text
+  translatedTitles       String?             @map("translated_titles") @db.LongText
+  translatedDescriptions String?             @map("translated_descriptions") @db.LongText
+  paymentPlan            String?             @map("payment_plan") @db.Text
+  translatedPaymentPlans String?             @map("translated_payment_plans") @db.LongText
+  socialMedia            String?             @map("social_media") @db.LongText
+  contactInfo            String?             @map("contact_info") @db.LongText
+  status                 String              @default("ACTIVE")
+  createdAt              DateTime            @default(now()) @map("created_at")
+  updatedAt              DateTime            @updatedAt @map("updated_at")
+  userId                 Int                 @map("user_id")
+  deletedAt              DateTime?           @map("deleted_at")
+  propertyTypeId         Int                 @map("property_type_id")
+  coAgentAccept          Boolean?            @default(false) @map("co_agent_accept")
+  commissionAmount       String?             @map("commission_amount")
+  commissionPercent      String?             @map("commission_percent")
+  commissionType         String?             @map("commission_type")
+  privateNote            String?             @map("private_note") @db.Text
+  isPublished            Boolean             @default(true) @map("is_published")
+  isFeatured             Boolean             @default(false) @map("is_featured")
+  landSizeSqm            Float?              @map("land_size_sqm")
+  floorPlans             FloorPlan[]
+  contacts               Message[]
+  propertyType           TypeProperty        @relation(fields: [propertyTypeId], references: [id])
+  user                   User                @relation(fields: [userId], references: [id])
+  zone                   Zone?               @relation(fields: [zoneId], references: [id])
+  amenities              PropertyAmenity[]
+  facilities             PropertyFacility[]
+  features               PropertyFeature[]
+  highlights             PropertyHighlight[]
+  images                 PropertyImage[]
+  labels                 PropertyLabel[]
+  listings               PropertyListing[]
+  nearbyPlaces           PropertyNearby[]
+  views                  PropertyView[]
+  unitPlans              UnitPlan[]
+
+  @@index([propertyTypeId], map: "properties_property_type_id_fkey")
+  @@index([userId], map: "properties_user_id_fkey")
+  @@index([zoneId], map: "properties_zone_id_fkey")
+  @@map("properties")
+}
+
+model Message {
+  id         Int       @id @default(autoincrement())
+  name       String
+  email      String?
+  phone      String
+  message    String    @db.Text
+  propertyId Int       @map("property_id")
+  status     String?   @default("NEW")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  deletedAt  DateTime? @map("deleted_at")
+  property   Property  @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId], map: "messages_property_id_fkey")
+  @@map("messages")
+}
+
+model PropertyListing {
+  id                 Int             @id @default(autoincrement())
+  listingType        ListingType     @map("listing_type")
+  status             ListingStatus   @default(ACTIVE)
+  price              Float
+  pricePerSqm        Float?          @map("price_per_sqm")
+  promotionalPrice   Float?          @map("promotional_price")
+  currency           Currency        @default(THB)
+  minimumStay        Int?            @map("minimum_stay")
+  availableFrom      DateTime?       @map("available_from")
+  privateNote        String?         @map("private_note") @db.Text
+  youtubeUrl         String?         @map("youtube_url")
+  tiktokUrl          String?         @map("tiktok_url")
+  allowCoAgent       Boolean         @default(false) @map("allow_co_agent")
+  commissionType     CommissionType? @map("commission_type")
+  commissionPercent  Float?          @map("commission_percent")
+  commissionAmount   Float?          @map("commission_amount")
+  commissionCurrency Currency        @default(THB) @map("commission_currency")
+  contactName        String?         @map("contact_name")
+  contactPhone       String?         @map("contact_phone")
+  contactPhoneAlt    String?         @map("contact_phone_alt")
+  contactEmail       String?         @map("contact_email")
+  contactLineId      String?         @map("contact_line_id")
+  contactWechatId    String?         @map("contact_wechat_id")
+  contactWhatsapp    String?         @map("contact_whatsapp")
+  contactFacebook    String?         @map("contact_facebook")
+  contactInstagram   String?         @map("contact_instagram")
+  useProfileContact  Boolean         @default(false) @map("use_profile_contact")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+  propertyId         Int             @map("property_id")
+  userId             Int             @map("user_id")
+  rentalPrice        Float?          @map("rental_price")
+  shortTerm1Year     Float?          @map("short_term_1_year")
+  shortTerm3Months   Float?          @map("short_term_3_months")
+  shortTerm6Months   Float?          @map("short_term_6_months")
+  floorPlans         FloorPlan[]
+  property           Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user               User            @relation(fields: [userId], references: [id])
+
+  @@index([propertyId], map: "property_listings_property_id_fkey")
+  @@index([userId], map: "property_listings_user_id_fkey")
+  @@map("property_listings")
+}
+
+model CurrencyRate {
+  currency  Currency @id
+  rate      Decimal  @db.Decimal(15, 6)
+  name      String
+  isBase    Boolean  @default(false) @map("is_base")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("currency_rates")
+}
+
+model Icon {
+  id         Int                 @id @default(autoincrement())
+  prefix     String
+  name       String?
+  active     Boolean             @default(true)
+  createdAt  DateTime            @default(now()) @map("created_at")
+  updatedAt  DateTime            @updatedAt @map("updated_at")
+  iconPath   String?             @map("icon_path")
+  key        String?
+  sub_name   String?
+  amenities  PropertyAmenity[]
+  facilities PropertyFacility[]
+  highlights PropertyHighlight[]
+  labels     PropertyLabel[]
+  nearbys    PropertyNearby[]
+  views      PropertyView[]
+
+  @@unique([prefix, name])
+  @@map("icons")
+}
+
+model PropertyImage {
+  id         Int      @id @default(autoincrement())
+  url        String
+  isFeatured Boolean  @default(false) @map("is_featured")
+  sortOrder  Int      @default(0) @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  propertyId Int      @map("property_id")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId], map: "property_images_property_id_fkey")
+  @@map("property_images")
+}
+
+model FloorPlan {
+  id                Int              @id @default(autoincrement())
+  url               String
+  title             String?
+  description       String?          @db.Text
+  sortOrder         Int              @default(0) @map("sort_order")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  propertyListingId Int?
+  propertyId        Int              @map("property_id")
+  PropertyListing   PropertyListing? @relation(fields: [propertyListingId], references: [id])
+  property          Property         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyListingId], map: "floor_plans_propertyListingId_fkey")
+  @@index([propertyId], map: "floor_plans_property_id_fkey")
+  @@map("floor_plans")
+}
+
+model UnitPlan {
+  id         Int      @id @default(autoincrement())
+  url        String
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  propertyId Int      @map("property_id")
+  sortOrder  Int      @default(0)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId], map: "unit_plans_property_id_fkey")
+  @@map("unit_plans")
+}
+
+model PropertyFeature {
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  propertyId  Int      @map("property_id")
+  featureType String?
+  active      Boolean  @default(false)
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId], map: "property_features_property_id_fkey")
+  @@map("property_features")
+}
+
+model PropertyAmenity {
+  id          Int      @id @default(autoincrement())
+  amenityType String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  propertyId  Int      @map("property_id")
+  active      Boolean  @default(false)
+  iconId      Int?
+  Icon        Icon?    @relation(fields: [iconId], references: [id])
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([iconId], map: "property_amenities_iconId_fkey")
+  @@index([propertyId], map: "property_amenities_property_id_fkey")
+  @@map("property_amenities")
+}
+
+model PropertyFacility {
+  id           Int      @id @default(autoincrement())
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  propertyId   Int      @map("property_id")
+  facilityType String?
+  active       Boolean  @default(false)
+  iconId       Int?     @map("icon_id")
+  Icon         Icon?    @relation(fields: [iconId], references: [id])
+  property     Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([iconId], map: "property_facilities_icon_id_fkey")
+  @@index([propertyId], map: "property_facilities_property_id_fkey")
+  @@map("property_facilities")
+}
+
+model PropertyView {
+  id         Int      @id @default(autoincrement())
+  viewType   String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  propertyId Int      @map("property_id")
+  active     Boolean  @default(false)
+  iconId     Int?
+  Icon       Icon?    @relation(fields: [iconId], references: [id])
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([iconId], map: "property_views_iconId_fkey")
+  @@index([propertyId], map: "property_views_property_id_fkey")
+  @@map("property_views")
+}
+
+model PropertyHighlight {
+  id            Int      @id @default(autoincrement())
+  highlightType String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  propertyId    Int      @map("property_id")
+  active        Boolean  @default(false)
+  iconId        Int?
+  Icon          Icon?    @relation(fields: [iconId], references: [id])
+  property      Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([iconId], map: "property_highlights_iconId_fkey")
+  @@index([propertyId], map: "property_highlights_property_id_fkey")
+  @@map("property_highlights")
+}
+
+model PropertyLabel {
+  id         Int      @id @default(autoincrement())
+  labelType  String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  propertyId Int      @map("property_id")
+  active     Boolean  @default(false)
+  iconId     Int?
+  Icon       Icon?    @relation(fields: [iconId], references: [id])
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([iconId], map: "property_labels_iconId_fkey")
+  @@index([propertyId], map: "property_labels_property_id_fkey")
+  @@map("property_labels")
+}
+
+model PropertyNearby {
+  id         Int      @id @default(autoincrement())
+  nearbyType String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  propertyId Int      @map("property_id")
+  active     Boolean  @default(false)
+  iconId     Int?
+  Icon       Icon?    @relation(fields: [iconId], references: [id])
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([iconId], map: "property_nearby_iconId_fkey")
+  @@index([propertyId], map: "property_nearby_property_id_fkey")
+  @@map("property_nearby")
+}
+
+model Blog {
+  id                 Int        @id @default(autoincrement())
+  slug               String     @unique
+  status             BlogStatus @default(DRAFT)
+  viewCount          Int        @default(0) @map("view_count")
+  title              String
+  content            String     @db.LongText
+  translatedTitles   String?    @map("translated_titles") @db.LongText
+  translatedContents String?    @map("translated_contents") @db.LongText
+  featuredImage      String?    @map("featured_image")
+  category           String?
+  tags               String?
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+  publishedAt        DateTime?  @map("published_at")
+  userId             Int        @map("user_id")
+  user               User       @relation(fields: [userId], references: [id])
+
+  @@index([userId], map: "blogs_user_id_fkey")
+  @@map("blogs")
+}
+
+model UiString {
+  id        Int      @id @default(autoincrement())
+  section   String   @db.VarChar(100)
+  slug      String   @db.VarChar(100)
+  en        String   @db.VarChar(255)
+  th        String   @db.VarChar(255)
+  zhCN      String   @db.VarChar(255)
+  ru        String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([section])
+  @@map("ui_string")
+}
+
+model MenuItem {
+  id        Int     @id @default(autoincrement())
+  path      String  @unique @db.VarChar(255)
+  icon      String? @db.VarChar(64)
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
+  labelSlug String  @db.VarChar(100)
+
+  @@index([sortOrder])
+  @@map("menu_item")
 }
 
 enum Role {
   ADMIN
   USER
   AGENT
-}
-
-// Zone model - สำหรับโซน/ย่านต่างๆ
-model Zone {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique // ชื่อโซน เช่น Jomtien, Pratumnak
-  nameEn      String   @map("name_en") // ชื่อภาษาอังกฤษ
-  nameTh      String?  @map("name_th") // ชื่อภาษาไทย
-  nameCh      String?  @map("name_ch") // ชื่อภาษาจีน
-  nameRu      String?  @map("name_ru") // ชื่อภาษารัสเซีย
-  description String?  @db.Text // คำอธิบาย
-  z_image     String?  @map("z_image") // URL รูปภาพโซน
-  city        String? // เมือง เช่น Pattaya
-  province    String // จังหวัด เช่น Chonburi
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  // ความสัมพันธ์กับ Property
-  properties Property[]
-
-  @@map("zones")
-}
-
-model TypeProperty {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique // ชื่อประเภท
-  nameEn      String   @map("name_en") // ชื่อภาษาอังกฤษ
-  nameTh      String?  @map("name_th") // ชื่อภาษาไทย
-  nameCh      String?  @map("name_ch") // ชื่อภาษาจีน
-  nameRu      String?  @map("name_ru") // ชื่อภาษารัสเซีย
-  p_image     String?  @map("z_image") // URL รูปภาพ
-  description String?  @db.Text // คําอธิบาย
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  properties Property[]
-
-  @@map("property_types")
-}
-
-
-// Property model - หลักการคือ Property เป็นข้อมูลหลักของอสังหาริมทรัพย์
-model Property {
-  id            Int          @id @default(autoincrement())
-  title         String // ชื่อประกาศ (propertyTitle จาก formData)
-  projectName   String       @map("project_name") // ชื่อโครงการ
-  propertyCode  String?      @unique @map("property_code") // รหัสทรัพย์ (auto generate)
-  referenceId   String?      @map("reference_id") // รหัสอ้างอิง
-  propertyTypeId Int         @map("property_type_id")
-  address       String       @db.Text // ที่อยู่
-  searchAddress String?      @map("search_address") @db.Text // ที่อยู่สำหรับค้นหา
-  district      String // เขต/อำเภอ
-  subdistrict   String       @map("subdistrict") // แขวง/ตำบล
-  province      String // จังหวัด
-  city          String? // เมือง
-  country       String       @default("Thailand")
-  zipCode       String       @map("zip_code") // รหัสไปรษณีย์
-  latitude      Float?       @map("lat") // พิกัด Latitude
-  longitude     Float?       @map("lng") // พิกัด Longitude
-
-  // ความสัมพันธ์กับ Zone
-  zoneId Int?  @map("zone_id")
-  
-  propertyType  TypeProperty @relation(fields: [propertyTypeId], references: [id])
-  zone   Zone? @relation(fields: [zoneId], references: [id])
-
-  // ข้อมูลพื้นที่ - สำหรับทุกประเภททรัพย์สิน
-  area       Float // พื้นที่ (ตร.ม.)
-  usableArea Float? @map("usable_area") // พื้นที่ใช้สอย (ตร.ม.)
-
-  // ข้อมูลที่ดิน - สำหรับที่ดิน (LAND)
-  landSizeRai    Float?         @map("land_size_rai") // ขนาดที่ดิน (ไร่)
-  landSizeNgan   Float?         @map("land_size_ngan") // ขนาดที่ดิน (งาน)
-  landSizeSqWah  Float?         @map("land_size_sq_wah") // ขนาดที่ดิน (ตารางวา)
-  landWidth      Float?         @map("land_width") // ความกว้างของที่ดิน (เมตร)
-  landLength     Float?         @map("land_length") // ความยาวของที่ดิน (เมตร)
-  landShape      LandShape?     @map("land_shape") // รูปทรงที่ดิน
-  landGrade      LandGrade?     @map("land_grade") // เกรดที่ดิน
-  landAccess     LandAccess?    @map("land_access") // การเข้าถึงที่ดิน
-  ownershipType  OwnershipType? @map("ownership_type") // ประเภทกรรมสิทธิ์์
-  ownershipQuota String?        @map("ownership_quota") // สัดส่วนกรรมสิทธิ์
-
-  // ข้อมูลบ้าน/คอนโด - สำหรับบ้านและคอนโด
-  bedrooms         Int? // จำนวนห้องนอน
-  bathrooms        Int? // จำนวนห้องน้ำ
-  floors           Int? // จำนวนชั้น
-  furnishing       FurnishingType? @default(UNFURNISHED) // เฟอร์นิเจอร์
-  constructionYear Int?            @map("construction_year") // ปีที่สร้าง
-  communityFee     Float?          @map("community_fee") // ค่าส่วนกลาง
-  buildingUnit     String?         @map("building_unit") // อาคาร/ยูนิต (สำหรับคอนโด)
-  floor            Int? // ชั้นที่ (สำหรับคอนโด)
-
-  // ข้อมูลหลายภาษา
-  description            String  @db.Text // คำอธิบายภาษาอังกฤษ
-  translatedTitles       String? @db.LongText @map("translated_titles") // หัวข้อในหลายภาษา (JSON string format: {"th": "...", "zh": "...", "ru": "..."})
-  translatedDescriptions String? @db.LongText @map("translated_descriptions") // คำอธิบายในหลายภาษา (JSON string format: {"th": "...", "zh": "...", "ru": "..."})
-  paymentPlan            String? @map("payment_plan") @db.Text // แผนการชำระเงิน
-  translatedPaymentPlans String? @db.LongText @map("translated_payment_plans") // แผนการชำระเงินในหลายภาษา
-
-  // ข้อมูลติดต่อและโซเชียลมีเดีย
-  socialMedia String? @db.LongText @map("social_media") // ข้อมูลโซเชียลมีเดีย (JSON string format: {"youtubeUrl": "...", "tiktokUrl": "..."})
-  contactInfo String? @db.LongText @map("contact_info") // ข้อมูลติดต่อ (JSON string format: {"phone": "...", "email": "...", "lineId": "..."})
-
-  // ข้อมูล Co-Agent Accept
-  coAgentAccept     Boolean? @default(false) @map("co_agent_accept") // การยอมรับ Co-Agent
-  commissionType    String?  @map("commission_type") // ประเภทค่าคอมมิชชั่น: 'percent' หรือ 'amount'
-  commissionPercent String?  @map("commission_percent") // เปอร์เซ็นต์ค่าคอมมิชชั่น
-  commissionAmount  String?  @map("commission_amount") // จำนวนเงินค่าคอมมิชชั่น
-  privateNote       String?  @db.Text @map("private_note") // บันทึกส่วนตัว
-
-  // ข้อมูลเพิ่มเติม
-  status      String    @default("ACTIVE") // เปิด/ปิด ประกาศ
-  isPublished Boolean   @default(true) @map("is_published") // เปิด/ปิด การแสดงประกาศ
-  isFeatured  Boolean   @default(false) @map("is_featured") // แสดงในหน้าแรก (Popular/Random)
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  deletedAt   DateTime? @map("deleted_at") // วันที่ลบ (สำหรับ soft delete)
-  userId      Int       @map("user_id") // ผู้สร้างข้อมูล
-  user      User      @relation(fields: [userId], references: [id]) 
-
-  // Relations
-  images       PropertyImage[]
-  features     PropertyFeature[]
-  amenities    PropertyAmenity[]
-  facilities   PropertyFacility[]
-  views        PropertyView[]
-  highlights   PropertyHighlight[]
-  labels       PropertyLabel[]
-  nearbyPlaces PropertyNearby[]
-  listings     PropertyListing[]
-  floorPlans   FloorPlan[] // แผนผังห้อง/ที่ดิน
-  unitPlans    UnitPlan[] // แผนผังยูนิต
-  contacts     Message[]
-
-  @@map("properties")
-}
-
-// Message model - สำหรับการติดต่อจากผู้สนใจ
-model Message {
-  id         Int           @id @default(autoincrement())
-  name       String
-  email      String? // ปรับให้เป็น optional
-  phone      String // ปรับให้เป็น required
-  message    String        @db.Text
-  propertyId Int           @map("property_id") // ปรับให้เป็น required
-  property   Property      @relation(fields: [propertyId], references: [id]) // เพิ่ม relation กับ Property
-  status     String?       @default("NEW")
-  createdAt  DateTime      @default(now()) @map("created_at")
-  updatedAt  DateTime      @updatedAt @map("updated_at")
-  deletedAt  DateTime?     @map("deleted_at") // วันที่ลบข้อมูล (soft delete)
-
-  @@map("messages")
-}
-
-// PropertyListing model - สำหรับการฝากขาย/เช่า (แยกออกจาก Property เพื่อให้ Property เดียวกันสามารถมีได้ทั้งประกาศขายและเช่า)
-model PropertyListing {
-  id               Int           @id @default(autoincrement())
-  listingType      ListingType   @map("listing_type") // ประเภทการฝาก (ขาย/เช่า)
-  status           ListingStatus @default(ACTIVE)
-  price            Float // ราคา
-  pricePerSqm      Float?        @map("price_per_sqm") // ราคาต่อตารางเมตร
-  promotionalPrice Float?        @map("promotional_price") // ราคาโปรโมชั่น
-  rentalPrice      Float?        @map("rental_price") // ราคาเช่ารายเดือน
-  shortTerm3Months Float?        @map("short_term_3_months") // ราคาเช่า 3 เดือน
-  shortTerm6Months Float?        @map("short_term_6_months") // ราคาเช่า 6 เดือน
-  shortTerm1Year   Float?        @map("short_term_1_year") // ราคาเช่า 1 ปี
-  currency         Currency      @default(THB)
-  minimumStay      Int?          @map("minimum_stay") // ระยะเวลาขั้นต่ำในการเช่า (เดือน) - สำหรับเช่าเท่านั้น
-  availableFrom    DateTime?     @map("available_from") // วันที่พร้อมเข้าอยู่
-  privateNote      String?       @map("private_note") @db.Text // บันทึกส่วนตัว
-  youtubeUrl       String?       @map("youtube_url") // URL วิดีโอ YouTube
-  tiktokUrl        String?       @map("tiktok_url") // URL วิดีโอ TikTok
-
-  // Co-Agent settings
-  allowCoAgent       Boolean         @default(false) @map("allow_co_agent") // อนุญาตให้มีนายหน้าร่วม
-  commissionType     CommissionType? @map("commission_type") // ประเภทค่าคอมมิชชั่น (เปอร์เซ็นต์หรือจำนวนเงิน)
-  commissionPercent  Float?          @map("commission_percent") // เปอร์เซ็นต์ค่าคอมมิชชั่น
-  commissionAmount   Float?          @map("commission_amount") // จำนวนเงินค่าคอมมิชชั่น
-  commissionCurrency Currency        @default(THB) @map("commission_currency") // สกุลเงินค่าคอมมิชชั่น
-
-  // Contact information
-  contactName       String? @map("contact_name") // ชื่อผู้ติดต่อ
-  contactPhone      String? @map("contact_phone") // เบอร์โทรหลัก
-  contactPhoneAlt   String? @map("contact_phone_alt") // เบอร์โทรสำรอง
-  contactEmail      String? @map("contact_email") // อีเมล
-  contactLineId     String? @map("contact_line_id") // LINE ID
-  contactWechatId   String? @map("contact_wechat_id") // WeChat ID
-  contactWhatsapp   String? @map("contact_whatsapp") // WhatsApp
-  contactFacebook   String? @map("contact_facebook") // Facebook
-  contactInstagram  String? @map("contact_instagram") // Instagram
-  useProfileContact Boolean @default(false) @map("use_profile_contact") // ใช้ข้อมูลติดต่อจากโปรไฟล์
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  propertyId Int         @map("property_id")
-  property   Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  userId     Int         @map("user_id") // ผู้ลงประกาศ
-  user       User        @relation(fields: [userId], references: [id])
-  floorPlans FloorPlan[]
-
-  @@map("property_listings")
 }
 
 enum ListingType {
@@ -272,22 +476,6 @@ enum CommissionType {
   PERCENT
   FIXED_AMOUNT
 }
-
-// enum PropertyType {
-//   CONDO
-//   HOUSE
-//   TOWNHOUSE
-//   VILLA
-//   LAND
-//   APARTMENT
-//   COMMERCIAL
-//   OFFICE
-//   RETAIL
-//   WAREHOUSE
-//   FACTORY
-//   HOTEL
-//   RESORT
-// }
 
 enum LandShape {
   RECTANGLE
@@ -322,259 +510,8 @@ enum FurnishingType {
   FULLY_FURNISHED
 }
 
-// CurrencyRate model - สำหรับจัดการอัตราแลกเปลี่ยนสกุลเงิน
-model CurrencyRate {
-  currency  Currency @id // รหัสสกุลเงิน (ใช้ enum Currency ที่มีอยู่แล้ว)
-  rate      Decimal  @db.Decimal(15, 6) // อัตราแลกเปลี่ยนเทียบกับ THB (THB = 1.0)
-  name      String // ชื่อเต็มของสกุลเงิน เช่น BATH, US DOLLAR
-  isBase    Boolean  @default(false) @map("is_base") // true สำหรับ THB
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@map("currency_rates")
-}
-
-// Icon model - สำหรับเก็บ master icon ต่างๆในระบบ
-model Icon {
-  id         Int                 @id @default(autoincrement())
-  prefix     String // รหัสนำหน้า icon เช่น facility, property-type
-  name       String? // ชื่อ icon เช่น swimming-pool, gym
-  key        String? // ชื่อ icon เช่น swimming-pool, gym
-  iconPath   String?             @map("icon_path") // เก็บ path ของไฟล์ SVG
-  active     Boolean             @default(true) // สถานะการใช้งาน
-  createdAt  DateTime            @default(now()) @map("created_at")
-  updatedAt  DateTime            @updatedAt @map("updated_at")
-  sub_name   String?
-  facilities PropertyFacility[]
-  amenities  PropertyAmenity[]
-  views      PropertyView[]
-  highlights PropertyHighlight[]
-  labels     PropertyLabel[]
-  nearbys    PropertyNearby[]
-
-  @@unique([prefix, name])
-  @@map("icons")
-}
-
-// Property Image model
-model PropertyImage {
-  id         Int      @id @default(autoincrement())
-  url        String
-  isFeatured Boolean  @default(false) @map("is_featured")
-  sortOrder  Int      @default(0) @map("sort_order")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-  propertyId Int      @map("property_id")
-  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-
-  @@map("property_images")
-}
-
-// Floor Plan model - แผนผังห้อง/ที่ดิน
-model FloorPlan {
-  id                Int              @id @default(autoincrement())
-  url               String // URL ของรูปภาพแผนผัง
-  title             String? // ชื่อแผนผัง
-  description       String?          @db.Text // คำอธิบายแผนผัง
-  sortOrder         Int              @default(0) @map("sort_order") // ลำดับการแสดงผล
-  createdAt         DateTime         @default(now()) @map("created_at")
-  updatedAt         DateTime         @updatedAt @map("updated_at")
-  propertyId        Int              @map("property_id") // รหัสทรัพย์สินที่เกี่ยวข้อง
-  property          Property         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  PropertyListing   PropertyListing? @relation(fields: [propertyListingId], references: [id])
-  propertyListingId Int?
-
-  @@map("floor_plans")
-}
-
-// Unit Plan model - แผนผังยูนิต (สำหรับโครงการที่มีหลายยูนิต)
-model UnitPlan {
-  id         Int      @id @default(autoincrement())
-  url        String // URL ของรูปภาพแผนผังยูนิต
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-  sortOrder  Int      @default(0)
-  propertyId Int      @map("property_id")
-  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-
-  @@map("unit_plans")
-}
-
-// Property Feature model - คุณสมบัติพื้นฐานของทรัพย์สิน
-model PropertyFeature {
-  id          Int      @id @default(autoincrement())
-  featureType String? // ประเภทคุณสมบัติ (เช่น Air Conditioning, Balcony, etc.)
-  active      Boolean  @default(false)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  propertyId  Int      @map("property_id")
-  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-
-  @@map("property_features")
-}
-
-// Property Amenity model - สิ่งอำนวยความสะดวกภายในที่พัก
-model PropertyAmenity {
-  id          Int      @id @default(autoincrement())
-  amenityType String?
-  active      Boolean  @default(false) // ใช้งานได้หรือไม่
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  propertyId  Int      @map("property_id")
-  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  Icon        Icon?    @relation(fields: [iconId], references: [id])
-  iconId      Int?
-
-  @@map("property_amenities")
-}
-
-// Property Facility model - สิ่งอำนวยความสะดวกของโครงการ
-model PropertyFacility {
-  id           Int      @id @default(autoincrement())
-  facilityType String?
-  active       Boolean  @default(false) // ใช้งานได้หรือไม่\
-  iconId       Int?     @map("icon_id")
-  Icon         Icon?    @relation(fields: [iconId], references: [id])
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-  propertyId   Int      @map("property_id")
-  property     Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-
-  @@map("property_facilities")
-}
-
-// Property View model - วิวของทรัพย์สิน
-model PropertyView {
-  id         Int      @id @default(autoincrement())
-  viewType   String?
-  active     Boolean  @default(false) // ใช้งานได้หรือไม่
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-  propertyId Int      @map("property_id")
-  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  Icon       Icon?    @relation(fields: [iconId], references: [id])
-  iconId     Int?
-
-  @@map("property_views")
-}
-
-// Property Highlight model - จุดเด่นของทรัพย์สิน
-model PropertyHighlight {
-  id            Int      @id @default(autoincrement())
-  highlightType String?
-  active        Boolean  @default(false) // ใช้งานได้หรือไม่
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-  propertyId    Int      @map("property_id")
-  property      Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  Icon          Icon?    @relation(fields: [iconId], references: [id])
-  iconId        Int?
-
-  @@map("property_highlights")
-}
-
-// Property Label model - ป้ายกำกับทรัพย์สิน
-model PropertyLabel {
-  id         Int      @id @default(autoincrement())
-  labelType  String?
-  active     Boolean  @default(false) // ใช้งานได้หรือไม่
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-  propertyId Int      @map("property_id")
-  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  Icon       Icon?    @relation(fields: [iconId], references: [id])
-  iconId     Int?
-
-  @@map("property_labels")
-}
-
-// Property Nearby model - สถานที่ใกล้เคียง
-model PropertyNearby {
-  id         Int      @id @default(autoincrement())
-  nearbyType String?
-  active     Boolean  @default(false)
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-  propertyId Int      @map("property_id")
-  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  Icon       Icon?    @relation(fields: [iconId], references: [id])
-  iconId     Int?
-
-  @@map("property_nearby")
-}
-
-enum ContactStatus {
-  NEW
-  CONTACTED
-  VISIT
-  PROPOSAL
-  WON
-  LOST
-}
-
-// Blog model - สำหรับบทความในเว็บไซต์
-model Blog {
-  id        Int        @id @default(autoincrement())
-  slug      String     @unique // URL slug สำหรับบทความ
-  status    BlogStatus @default(DRAFT)
-  viewCount Int        @default(0) @map("view_count") // จำนวนการเข้าชม
-
-  // ข้อมูลหลายภาษา
-  title              String // หัวข้อภาษาอังกฤษ (หลัก)
-  content            String @db.LongText // เนื้อหาภาษาอังกฤษ (หลัก)
-  translatedTitles   String? @db.LongText @map("translated_titles") // หัวข้อในหลายภาษา (JSON string format: {"th": "...", "zh": "...", "ru": "..."})
-  translatedContents String? @db.LongText @map("translated_contents") // เนื้อหาในหลายภาษา (JSON string format: {"th": "...", "zh": "...", "ru": "..."})
-
-  // ข้อมูลเพิ่มเติม
-  featuredImage String? @map("featured_image") // URL รูปภาพหลัก
-  category      String? // หมวดหมู่ (เก็บเป็น string แทน relation)
-  tags          String? // แท็ก (เก็บเป็น string คั่นด้วย comma)
-
-  // ข้อมูลผู้สร้างและเวลา
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  publishedAt DateTime? @map("published_at") // วันที่เผยแพร่
-  userId      Int       @map("user_id") // ผู้สร้างบทความ
-  user        User      @relation(fields: [userId], references: [id])
-
-  @@map("blogs")
-}
-
-
-model UiString {
-  id        Int    @id @default(autoincrement())
-  section   String @db.VarChar(100)      // เช่น 'overview', 'header', 'footer'
-  slug      String @db.VarChar(100)
-  en        String @db.VarChar(255)
-  th        String @db.VarChar(255)
-  zhCN      String @db.VarChar(255)
-  ru        String @db.VarChar(255)
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // item   MenuItem[]
-
-  @@index([section])
-  @@map("ui_string")
-}
-
-model MenuItem {
-  id          Int      @id @default(autoincrement())
-  path        String   @unique @db.VarChar(255)   // '/buy', '/rent'
-  icon        String?  @db.VarChar(64)
-  sortOrder   Int      @default(0)
-  active      Boolean  @default(true)
-  labelSlug   String   @db.VarChar(100)
-  // label       UiString @relation(fields: [labelSlug], references: [slug])
-
-  @@index([sortOrder])
-  @@map("menu_item")
-}
-
-
-// สถานะบทความ
 enum BlogStatus {
-  DRAFT // ฉบับร่าง
-  PUBLISHED // เผยแพร่แล้ว
-  ARCHIVED // เก็บถาวร
+  DRAFT
+  PUBLISHED
+  ARCHIVED
 }

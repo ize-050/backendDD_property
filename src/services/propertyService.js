@@ -49,11 +49,12 @@ class PropertyService {
           data: {
             ...propertyData,
             reference: newReference,
-            projectName: `${propertyData.projectName}`,
+            projectName: `${originalProperty.projectName}`,
             userId: userId,
             status: 'publish', // Start as draft
             viewCount: 0,    // Reset counts
-            inquiryCount: 0
+            inquiryCount: 0,
+            landSizeSqm: originalProperty.landSizeSqm
           }
         });
 

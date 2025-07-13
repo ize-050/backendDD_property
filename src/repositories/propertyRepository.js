@@ -427,6 +427,7 @@ class PropertyRepository {
 
           // Zone relation
           zoneId: data.zone_id ? parseInt(data.zone_id) : undefined,
+       
           
           // Area info
           area: 10,
@@ -436,6 +437,7 @@ class PropertyRepository {
           landSizeRai: data.land_size_rai ? parseFloat(data.land_size_rai) : null,
           landSizeNgan: data.land_size_ngan ? parseFloat(data.land_size_ngan) : null,
           landSizeSqWah: data.land_size_sq_wah ? parseFloat(data.land_size_sq_wah) : null,
+          landSizeSqm: data.landSizeSqm ? parseFloat(data.landSizeSqm) : null,
           landWidth: data.landWidth ? parseFloat(data.landWidth) : null,
           landLength: data.landLength ? parseFloat(data.landLength) : null,
           landShape: data.landShape,
@@ -488,7 +490,7 @@ class PropertyRepository {
                     ...listing,
                   price : listing.price ? parseFloat(listing.price) : 0,
                   userId:  data.userId ? parseInt(data.userId) : 1,
-                  promotionalPrice:null,
+                  promotionalPrice:listing.promotionalPrice ? parseFloat(listing.promotionalPrice) : null,
                   status: 'ACTIVE',
                   shortTerm3Months : listing.shortTerm3Months ? parseFloat(listing.shortTerm3Months) : null,
                   shortTerm6Months : listing.shortTerm6Months ? parseFloat(listing.shortTerm6Months) : null,
@@ -660,6 +662,7 @@ class PropertyRepository {
       landSizeRai: data.land_size_rai ? parseFloat(data.land_size_rai) : null,
       landSizeNgan: data.land_size_ngan ? parseFloat(data.land_size_ngan) : null,
       landSizeSqWah: data.land_size_sq_wah ? parseFloat(data.land_size_sq_wah) : null,
+      landSizeSqm: data.landSizeSqm ? parseFloat(data.landSizeSqm) : null,
       landWidth: data.landWidth ? parseFloat(data.landWidth) : null,
       landLength: data.landLength ? parseFloat(data.landLength) : null,
       landShape: data.landShape,
