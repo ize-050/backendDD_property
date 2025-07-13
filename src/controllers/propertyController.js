@@ -672,7 +672,7 @@ class PropertyController {
   async getUserProperties(req, res, next) {
     try {
       console.log("query", req.query)
-      const result = await propertyService.getUserProperties(req.user.userId, req.query);
+      const result = await propertyService.getUserProperties(req.user, req.query);
       res.status(200).json({
         status: 'success',
         ...result,

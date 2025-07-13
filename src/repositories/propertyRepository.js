@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+const { Prisma, PrismaClient } = require('@prisma/client');
 const path = require("path");
 const fs = require("fs");
 const prisma = new PrismaClient();
@@ -49,10 +49,10 @@ class PropertyRepository {
     // Add search by title or description
     if (search) {
       where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { address: { contains: search, mode: 'insensitive' } },
-        { city: { contains: search, mode: 'insensitive' } }
+        { title: { contains: search } },
+        { description: { contains: search } },
+        { address: { contains: search } },
+        { city: { contains: search } }
       ];
     }
 
@@ -1517,6 +1517,106 @@ class PropertyRepository {
 
 
 
+  async findAll(options = {}) {
+    const {
+      page = 1,
+      limit = 10,
+      search = '',
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = options;
+
+    const skip = (page - 1) * limit;
+
+    const where = {
+      deletedAt: null,
+    };
+
+    if (search) {
+      where.OR = [
+        { title: { contains: search } },
+        { projectName: { contains: search } },
+        { description: { contains: search } },
+        { address: { contains: search } },
+        { propertyCode: { contains: search } },
+        { city: { contains: search } },
+        { district: { contains: search } },
+        { province: { contains: search } },
+      ];
+    }
+
+    const total = await prisma.property.count({ where });
+    let properties = [];
+
+    if (sortBy === 'price') {
+      const sortDirection = sortOrder.toUpperCase() === 'DESC' ? Prisma.sql`DESC` : Prisma.sql`ASC`;
+      
+      let searchConditions = [];
+      if (search) {
+        const searchPattern = `%${search}%`;
+        searchConditions.push(Prisma.sql`p.title LIKE ${searchPattern}`);
+        searchConditions.push(Prisma.sql`p.project_name LIKE ${searchPattern}`);
+        searchConditions.push(Prisma.sql`p.description LIKE ${searchPattern}`);
+        searchConditions.push(Prisma.sql`p.address LIKE ${searchPattern}`);
+        searchConditions.push(Prisma.sql`p.property_code LIKE ${searchPattern}`);
+        searchConditions.push(Prisma.sql`p.city LIKE ${searchPattern}`);
+        searchConditions.push(Prisma.sql`p.district LIKE ${searchPattern}`);
+        searchConditions.push(Prisma.sql`p.province LIKE ${searchPattern}`);
+      }
+      const whereClause = searchConditions.length > 0 ? Prisma.sql`AND (${Prisma.join(searchConditions, ' OR ')})` : Prisma.empty;
+
+      const sortedIds = await prisma.$queryRaw`
+        SELECT p.id
+        FROM properties p
+        LEFT JOIN property_listings l ON p.id = l.property_id
+        WHERE p.deleted_at IS NULL ${whereClause}
+        GROUP BY p.id
+        ORDER BY AVG(l.price) ${sortDirection}
+        LIMIT ${Number(limit)}
+        OFFSET ${Number(skip)}
+      `;
+
+      const propertyIds = sortedIds.map(p => p.id);
+
+      if (propertyIds.length > 0) {
+        const fetchedProperties = await prisma.property.findMany({
+          where: { id: { in: propertyIds } },
+          include: {
+            images: true,
+            listings: true,
+            propertyType: true,
+            labels: true,
+            _count: { select: { views: true } },
+          },
+        });
+        
+        const propertyMap = new Map(fetchedProperties.map(p => [p.id, p]));
+        properties = propertyIds.map(id => propertyMap.get(id));
+      }
+    } else {
+      properties = await prisma.property.findMany({
+        where,
+        orderBy: { [sortBy]: sortOrder },
+        skip,
+        take: Number(limit),
+        include: {
+          images: true,
+          listings: true,
+          propertyType: true,
+          labels: true,
+          _count: { select: { views: true } },
+        },
+      });
+    }
+
+    return {
+      properties,
+      total,
+      page: Number(page),
+      limit: Number(limit),
+    };
+  }
+
   async findByUserId(userId, options = {}) {
     const {
       page = 1,
@@ -1526,78 +1626,107 @@ class PropertyRepository {
       sortOrder = 'desc',
     } = options;
 
-    // Calculate pagination
     const skip = (page - 1) * limit;
 
-    // Build filter conditions
     const where = {
       userId: Number(userId),
+      deletedAt: null,
     };
 
-    // Add search filter if provided
     if (search) {
       where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { projectName: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { address: { contains: search, mode: 'insensitive' } },
-        { reference: { contains: search, mode: 'insensitive' } },
-        { propertyCode: { contains: search, mode: 'insensitive' } },
-        { city: { contains: search, mode: 'insensitive' } },
-        { district: { contains: search, mode: 'insensitive' } },
-        { province: { contains: search, mode: 'insensitive' } }
+        { title: { contains: search } },
+        { projectName: { contains: search } },
+        { description: { contains: search } },
+        { address: { contains: search } },
+        { propertyCode: { contains: search } },
+        { city: { contains: search } },
+        { district: { contains: search } },
+        { province: { contains: search } },
       ];
     }
 
-    where.deletedAt = null;
-    // Execute query
-    const [properties, total] = await Promise.all([
-      prisma.property.findMany({
+    const total = await prisma.property.count({ where });
+    let properties = [];
+
+    if (sortBy === 'price') {
+      const sortDirection = sortOrder.toUpperCase() === 'DESC' ? Prisma.sql`DESC` : Prisma.sql`ASC`;
+      
+      let searchConditions = [];
+      if (search) {
+        const searchPattern = `%${search}%`;
+        searchConditions.push(Prisma.sql`p.title LIKE ${searchPattern}`);
+        searchConditions.push(Prisma.sql`p.project_name LIKE ${searchPattern}`);
+        searchConditions.push(Prisma.sql`p.description LIKE ${searchPattern}`);
+        searchConditions.push(Prisma.sql`p.address LIKE ${searchPattern}`);
+        searchConditions.push(Prisma.sql`p.property_code LIKE ${searchPattern}`);
+        searchConditions.push(Prisma.sql`p.city LIKE ${searchPattern}`);
+        searchConditions.push(Prisma.sql`p.district LIKE ${searchPattern}`);
+        searchConditions.push(Prisma.sql`p.province LIKE ${searchPattern}`);
+      }
+      const whereClause = searchConditions.length > 0 ? Prisma.sql`AND (${Prisma.join(searchConditions, ' OR ')})` : Prisma.empty;
+
+      const sortedIds = await prisma.$queryRaw`
+        SELECT p.id
+        FROM properties p
+        LEFT JOIN property_listings l ON p.id = l.property_id
+        WHERE p.user_id = ${Number(userId)} AND p.deleted_at IS NULL ${whereClause}
+        GROUP BY p.id
+        ORDER BY AVG(l.price) ${sortDirection}
+        LIMIT ${Number(limit)}
+        OFFSET ${Number(skip)}
+      `;
+
+      const propertyIds = sortedIds.map(p => p.id);
+
+      if (propertyIds.length > 0) {
+        const fetchedProperties = await prisma.property.findMany({
+          where: { id: { in: propertyIds } },
+          include: {
+            images: true,
+            listings: true,
+            propertyType: true,
+            labels: true,
+            _count: { select: { views: true } },
+          },
+        });
+        
+        const propertyMap = new Map(fetchedProperties.map(p => [p.id, p]));
+        properties = propertyIds.map(id => propertyMap.get(id));
+      }
+    } else {
+      properties = await prisma.property.findMany({
         where,
+        orderBy: { [sortBy]: sortOrder },
+        skip,
+        take: Number(limit),
         include: {
           images: true,
           listings: true,
-          propertyType:true,
-          labels:true,
-          // Include view and inquiry counts
-          _count: {
-            select: {
-              views: true,
-            },
-          },
+          propertyType: true,
+          labels: true,
+          _count: { select: { views: true } },
         },
-        orderBy: {
-          [sortBy]: sortOrder,
-        },
-        skip,
-        take: Number(limit),
-      }),
-      prisma.property.count({ where }),
-    ]);
+      });
+    }
 
-    // Process properties to include view and inquiry counts
     const processedProperties = properties.map(property => ({
       ...property,
       viewCount: property._count?.views || 0,
-      inquiryCount: property._count?.inquiries || 0,
-      // Format the date
+      inquiryCount: 0, // Placeholder
       formattedDate: property.createdAt ? new Date(property.createdAt).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
       }) : 'N/A',
-      // Get the featured image
       featuredImage: property.images && property.images.length > 0
-        ? property.images.find(img => img.isFeatured) || property.images.find(res=>res.sortOrder===0)
+        ? property.images.find(img => img.isFeatured) || property.images[0]
         : null,
     }));
 
-    // Calculate pagination metadata
     const totalPages = Math.ceil(total / limit);
     const hasNext = page < totalPages;
     const hasPrev = page > 1;
-
-    console.log("processedProperties",processedProperties);
 
     return {
       properties: processedProperties,
@@ -1608,7 +1737,7 @@ class PropertyRepository {
       hasNext,
       hasPrev,
     };
-  };
+  }
 
   async moveImagesFromTemp(propertyId, images) {
     const fs = require('fs');

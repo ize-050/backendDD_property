@@ -595,14 +595,20 @@ class PropertyService {
    * @param {Object} queryParams - Query parameters for pagination, search, and sorting
    * @returns {Promise<Object>} - Properties with pagination metadata
    */
-  async getUserProperties(userId, queryParams) {
+  async getUserProperties(user, queryParams) {
     try {
-      if (!userId) {
-        throw new ApiError(400, 'User ID is required');
+      if (!user || !user.userId) {
+        throw new ApiError(400, 'User information is required');
       }
-      
-      const properties = await propertyRepository.findByUserId(userId, queryParams);
-      console.log(properties);
+
+
+      let properties;
+      if (user.role === 'ADMIN') {
+        properties = await propertyRepository.findAll(queryParams);
+      } else {
+        properties = await propertyRepository.findByUserId(user.userId, queryParams);
+      }
+
       return properties;
     } catch (error) {
       if (error instanceof ApiError) throw error;
