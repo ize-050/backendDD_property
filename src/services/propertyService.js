@@ -223,7 +223,7 @@ class PropertyService {
    */
   async getPropertyByIdForAdmin(id) {
     try {
-      const property = await propertyRepository.findById(id);
+      const property = await propertyRepository.findByIdForAdmin(id);
 
       if (!property) {
         throw new ApiError(404, `Property with ID ${id} not found`);
