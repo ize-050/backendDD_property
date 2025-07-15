@@ -240,6 +240,17 @@ model Icon {
   @@map("icons")
 }
 
+model MessagingSettings {
+  id            Int      @id @default(autoincrement())
+  platform      String   @unique
+  platformValue String?  @map("platform_value")
+  isEnabled     Boolean  @default(false) @map("is_enabled")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("messaging_settings")
+}
+
 model PropertyImage {
   id         Int      @id @default(autoincrement())
   url        String

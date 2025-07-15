@@ -58,6 +58,10 @@ app.use('/location', express.static('public/images/location', {
 
 
 
+// Admin routes
+const adminRoutes = require('./routes/adminRoutes');
+app.use('/admin', adminRoutes);
+
 // API routes
 app.use('/api', routes);
 

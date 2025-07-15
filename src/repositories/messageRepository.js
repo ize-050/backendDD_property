@@ -14,6 +14,30 @@ class MessageRepository {
     });
   }
 
+  async getPropertyWithAgent(propertyId) {
+    return prisma.property.findUnique({
+      where: {
+        id: parseInt(propertyId)
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            firstname: true,
+            lastname: true
+          }
+        },
+        propertyType: {
+          select: {
+            name: true
+          }
+        }
+      }
+    });
+  }
+
   async getMessagesByPropertyId(propertyId) {
     return prisma.message.findMany({
       where: {

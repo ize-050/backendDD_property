@@ -26,12 +26,12 @@ class DashboardController {
             where: { userId: parseInt(userId) }
           }),
           
-          // Properties by type
+          // Properties by type (simple groupBy)
           prisma.property.groupBy({
             by: ['propertyTypeId'],
             where: { userId: parseInt(userId) },
             _count: {
-              propertyTypeId:true
+              propertyTypeId: true
             }
           }),
           
@@ -159,10 +159,24 @@ class DashboardController {
         ]);
         
         totalProperties = userPropertiesCount;
-        propertiesByType = userPropertiesByType.map(item => ({
-          propertyType: item.propertyTypeId,
-          count: item._count.propertyTypeId
-        }));
+        
+        // Add property type names to the grouped data
+        const propertiesByTypeWithNames = await Promise.all(
+          userPropertiesByType.map(async (item) => {
+            const propertyType = await prisma.typeProperty.findUnique({
+              where: { id: item.propertyTypeId },
+              select: { name: true }
+            });
+            return {
+              propertyTypeId: item.propertyTypeId,
+              propertyType: item.propertyTypeId, // Keep for backward compatibility
+              propertyTypeName: propertyType?.name || 'Unknown',
+              count: item._count.propertyTypeId
+            };
+          })
+        );
+        
+        propertiesByType = propertiesByTypeWithNames;
         totalMessages = userMessages;
         messagesByStatus = userMessagesByStatus || [];
         messagesByType = userMessagesByType || [];
@@ -182,6 +196,197 @@ class DashboardController {
           messagesByType,
           messagesByStatus,
           recentMessages
+        }
+      });
+    } catch (error) {
+      return handleError(error, res);
+    }
+  }
+
+  async getUserDashboardStats(req, res) {
+    try {
+      const { userId } = req.params;
+      const requestingUserId = req.user?.userId;
+      const requestingUserRole = req.user?.role;
+
+      // Security check: Users can only access their own data unless they are admin
+      if (requestingUserRole !== 'ADMIN' && parseInt(requestingUserId) !== parseInt(userId)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. You can only view your own dashboard data.'
+        });
+      }
+
+      // Get user-specific dashboard stats
+      const [userPropertiesCount, userPropertiesByType, userMessages, userMessagesByStatus, userMessagesByType, userRecentMessages] = await Promise.all([
+        // Total properties by this user
+        prisma.property.count({
+          where: { userId: parseInt(userId) }
+        }),
+        
+        // Properties by type for this user (simple groupBy)
+        prisma.property.groupBy({
+          by: ['propertyTypeId'],
+          where: { userId: parseInt(userId) },
+          _count: {
+            propertyTypeId: true
+          }
+        }),
+        
+        // Messages for user's properties
+        prisma.$transaction(async (tx) => {
+          // First get all properties that belong to this user
+          const userProperties = await tx.property.findMany({
+            where: { userId: parseInt(userId) },
+            select: { id: true },
+          });
+          
+          // Extract property IDs
+          const propertyIds = userProperties.map(prop => prop.id);
+          
+          if (propertyIds.length === 0) {
+            return 0;
+          }
+          
+          // Count total messages for these properties
+          return tx.message.count({
+            where: {
+              propertyId: {
+                in: propertyIds
+              }
+            }
+          });
+        }),
+        
+        // Messages by status for user's properties
+        prisma.$transaction(async (tx) => {
+          // First get all properties that belong to this user
+          const userProperties = await tx.property.findMany({
+            where: { userId: parseInt(userId) },
+            select: { id: true },
+          });
+          
+          // Extract property IDs
+          const propertyIds = userProperties.map(prop => prop.id);
+          
+          if (propertyIds.length === 0) {
+            return [];
+          }
+          
+          // Group messages by status for these properties
+          return tx.message.groupBy({
+            by: ['status'],
+            where: {
+              propertyId: {
+                in: propertyIds
+              }
+            },
+            _count: {
+              status: true
+            }
+          });
+        }),
+        
+        // Messages by type for user's properties
+        prisma.$transaction(async (tx) => {
+          // First get all properties that belong to this user
+          const userProperties = await tx.property.findMany({
+            where: { userId: parseInt(userId) },
+            select: { id: true },
+          });
+          
+          // Extract property IDs
+          const propertyIds = userProperties.map(prop => prop.id);
+          
+          if (propertyIds.length === 0) {
+            return [];
+          }
+          
+          // Group messages by property type for these properties
+          return tx.message.groupBy({
+            by: ['propertyId'],
+            where: {
+              propertyId: {
+                in: propertyIds
+              }
+            },
+            _count: {
+              propertyId: true
+            }
+          });
+        }),
+        
+        // Recent messages for user's properties
+        prisma.$transaction(async (tx) => {
+          // First get all properties that belong to this user
+          const userProperties = await tx.property.findMany({
+            where: { userId: parseInt(userId) },
+            select: { id: true },
+          });
+          
+          // Extract property IDs
+          const propertyIds = userProperties.map(prop => prop.id);
+          
+          if (propertyIds.length === 0) {
+            return [];
+          }
+          
+          // Get recent messages for these properties
+          return tx.message.findMany({
+            where: {
+              propertyId: {
+                in: propertyIds
+              }
+            },
+            include: {
+              property: {
+                select: {
+                  projectName: true,
+                  id: true
+                }
+              }
+            },
+            orderBy: {
+              createdAt: 'desc'
+            },
+            take: 10
+          });
+        })
+      ]);
+
+      // Calculate property views (simplified - you may need to adjust based on your views tracking)
+      const propertiesViews = userPropertiesCount * 10; // Placeholder calculation
+      
+      // Count new messages
+      const newMessages = userMessagesByStatus.find(status => status.status === 'NEW')?._count?.status || 0;
+
+      // Add property type names to the grouped data
+      const propertiesByTypeWithNames = await Promise.all(
+        userPropertiesByType.map(async (item) => {
+          const propertyType = await prisma.typeProperty.findUnique({
+            where: { id: item.propertyTypeId },
+            select: { name: true }
+          });
+          return {
+            propertyTypeId: item.propertyTypeId,
+            propertyType: item.propertyTypeId, // Keep for backward compatibility
+            propertyTypeName: propertyType?.name || 'Unknown',
+            count: item._count.propertyTypeId
+          };
+        })
+      );
+
+      return res.json({
+        success: true,
+        data: {
+          totalProperties: userPropertiesCount,
+          propertiesViews,
+          totalMessages: userMessages,
+          newMessages,
+          propertiesByType: propertiesByTypeWithNames,
+          messagesByType: userMessagesByType,
+          messagesByStatus: userMessagesByStatus,
+          recentMessages: userRecentMessages
         }
       });
     } catch (error) {

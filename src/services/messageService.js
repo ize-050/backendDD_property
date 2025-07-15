@@ -1,4 +1,5 @@
 const messageRepository = require('../repositories/messageRepository');
+const emailService = require('./emailService');
 const { BadRequestError } = require('../utils/errors');
 
 class MessageService {
@@ -15,7 +16,39 @@ class MessageService {
     }
 
     try {
+      // ดึงข้อมูล property พร้อม agent ก่อนบันทึก message
+      const propertyWithAgent = await messageRepository.getPropertyWithAgent(messageData.propertyId);
+      
+      if (!propertyWithAgent) {
+        throw new BadRequestError('Property not found');
+      }
+
       const result = await messageRepository.createMessage(messageData);
+      
+      // ส่งอีเมลแจ้งเตือนไปยัง agent ของทรัพย์สิน
+      try {
+        const agentName = propertyWithAgent.user.name || 
+                         `${propertyWithAgent.user.firstname || ''} ${propertyWithAgent.user.lastname || ''}`.trim() || 
+                         'Agent';
+        
+        const propertyTitle = `${propertyWithAgent.title} (${propertyWithAgent.propertyType?.name || 'Property'})`;
+        
+        await emailService.sendPropertyInquiryEmail({
+          propertyId: messageData.propertyId,
+          propertyTitle: propertyTitle,
+          customerName: messageData.name,
+          customerEmail: messageData.email || 'Not provided',
+          customerPhone: messageData.phone,
+          message: messageData.message,
+          agentEmail: propertyWithAgent.user.email, // ส่งไปยังอีเมลของ agent
+          agentName: agentName
+        });
+        console.log(`Message notification email sent to agent: ${propertyWithAgent.user.email}`);
+      } catch (emailError) {
+        console.error('Failed to send message notification email:', emailError);
+        // ไม่ throw error เพื่อไม่ให้การส่งอีเมลล้มเหลวส่งผลต่อการบันทึกข้อมูล
+      }
+      
       return result;
     } catch (error) {
       console.error('Error creating message:', error);
