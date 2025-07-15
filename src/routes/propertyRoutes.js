@@ -27,6 +27,8 @@ router.get('/backoffice/my-properties', authMiddleware.authenticate, propertyCon
 router.get('/', propertyController.getAllProperties);
 router.get('/:id', propertyController.getPropertyById);
 
+router.get('/backoffice/:id', propertyController.getPropertyByIdForAdmin);
+
 // Create property with form data and image upload
 router.post('/', 
   authMiddleware.authenticate, 

@@ -122,6 +122,22 @@ class PropertyController {
     }
   }
 
+
+  /**
+   * Get property by ID for Admin (bypasses some checks)
+   * @route GET /api/properties/backoffice/:id
+   */
+  async getPropertyByIdForAdmin(req, res, next) {
+    try {
+      const property = await propertyService.getPropertyByIdForAdmin(req.params.id);
+      res.status(200).json({
+        status: 'success',
+        data: property,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
   /**
    * Create new property
    * @route POST /api/properties
