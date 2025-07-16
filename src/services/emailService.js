@@ -1,6 +1,9 @@
 const nodemailer = require('nodemailer');
 const path = require('path');
 const fs = require('fs');
+const { PrismaClient } = require('@prisma/client');
+
+const prisma = new PrismaClient();
 
 class EmailService {
   constructor() {
@@ -19,6 +22,22 @@ class EmailService {
       });
     } catch (error) {
       console.error('Error initializing email transporter:', error);
+    }
+  }
+
+  async getAdminEmail() {
+    try {
+      const emailSetting = await prisma.messagingSettings.findFirst({
+        where: {
+          platform: 'email',
+          isEnabled: true
+        }
+      });
+      
+      return emailSetting?.platformValue || process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
+    } catch (error) {
+      console.error('Error fetching admin email from settings:', error);
+      return process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
     }
   }
 
@@ -150,8 +169,11 @@ class EmailService {
       Time: ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}
     `;
 
+    // ดึงข้อมูล admin email จาก messaging_settings
+    const adminEmail = await this.getAdminEmail();
+    
     return await this.sendEmail({
-      to: process.env.ADMIN_EMAIL || process.env.EMAIL_USER,
+      to: adminEmail,
       subject: emailSubject,
       html,
       text: textVersion
@@ -164,10 +186,27 @@ class EmailService {
     customerName, 
     customerEmail, 
     customerPhone, 
-    message, 
-    agentEmail,
-    agentName = 'Agent'
+    message
   }) {
+    // ดึงข้อมูล property และเจ้าของ property จาก database
+    const property = await prisma.property.findUnique({
+      where: { id: propertyId },
+      include: {
+        user: true // ดึงข้อมูลเจ้าของ property
+      }
+    });
+
+    if (!property) {
+      throw new Error('Property not found');
+    }
+
+    const agentEmail = property.user?.email;
+    const agentName = property.user?.name || 'Agent';
+    const property_code = property.property_code;
+
+    if (!agentEmail) {
+      throw new Error('Property owner email not found');
+    }
     const emailSubject = `Property Inquiry: ${propertyTitle}`;
     
     const html = `
@@ -193,7 +232,7 @@ class EmailService {
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
                 <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-weight: 500; color: #6b7280; width: 120px;">รหัสทรัพย์สิน:</td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; color: #374151; font-weight: 500;">${propertyId}</td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; color: #374151; font-weight: 500;">${property_code}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; font-weight: 500; color: #6b7280;">ชื่อทรัพย์สิน:</td>
@@ -267,7 +306,8 @@ class EmailService {
     `;
 
     return await this.sendEmail({
-      to: agentEmail || process.env.ADMIN_EMAIL || process.env.EMAIL_USER,
+      to: agentEmail, // ส่งไปหาเจ้าของ property
+      cc: 'supakorn@d-luckproperty.com', // CC ไปที่ supakorn เสมอ
       subject: emailSubject,
       html,
       text: textVersion
