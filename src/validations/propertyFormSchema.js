@@ -100,23 +100,25 @@ const propertyFormValidation = [
   
   // Building info
   body('bedrooms')
-    .optional()
+    .optional({ checkFalsy: true })
     .isInt({ min: 0 }).withMessage('Bedrooms must be a non-negative integer'),
   
   body('bathrooms')
-    .optional()
+    .optional({ checkFalsy: true })
     .isInt({ min: 0 }).withMessage('Bathrooms must be a non-negative integer'),
   
-  body('floors').optional(),
+  body('floors')
+    .optional({ checkFalsy: true })
+    .isInt({ min: 0 }).withMessage('Floors must be a non-negative integer'),
   
   body('furnishing')
-    .optional()
+    .optional({ checkFalsy: true })
     .isString()
     .withMessage('Invalid furnishing type'),
   
   body('constructionYear')
-    .optional()
-    .isInt({ min: 1900 })
+    .optional({ checkFalsy: true })
+    .isInt({ min: 1900, max: new Date().getFullYear() })
     .withMessage(`Construction year must be between 1900 and ${new Date().getFullYear()}`),
   
   body('communityFee')

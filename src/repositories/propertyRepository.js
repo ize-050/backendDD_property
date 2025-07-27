@@ -1459,6 +1459,7 @@ class PropertyRepository {
           highlights: true,
           amenities: true,
           views: true,
+          zone: true,
           labels:{
             where:{
               active:true
@@ -1490,6 +1491,7 @@ class PropertyRepository {
             highlights: true,
             amenities: true,
             views: true,
+            zone: true,
             labels: {
               where: {
                 active: true
