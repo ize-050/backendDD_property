@@ -118,8 +118,8 @@ const propertyFormValidation = [
   
   body('constructionYear')
     .optional({ checkFalsy: true })
-    .isInt({ min: 1900, max: new Date().getFullYear() })
-    .withMessage(`Construction year must be between 1900 and ${new Date().getFullYear()}`),
+    .isInt({ min: 1900, max: 2100 })
+    .withMessage(`Construction year must be between 1900 and 2100`),
   
   body('communityFee')
     .optional()
