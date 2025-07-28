@@ -138,6 +138,40 @@ class PropertyController {
       next(error);
     }
   }
+
+  /**
+   * Increment view count for a property
+   * @route POST /api/properties/:id/view
+   */
+  async incrementViewCount(req, res, next) {
+    try {
+      const { id } = req.params;
+      
+      // Get client IP address
+      const clientIP = req.ip || 
+                      req.connection.remoteAddress || 
+                      req.socket.remoteAddress ||
+                      (req.connection.socket ? req.connection.socket.remoteAddress : null) ||
+                      req.headers['x-forwarded-for']?.split(',')[0] ||
+                      req.headers['x-real-ip'] ||
+                      'unknown';
+
+      // Increment view count with IP tracking
+      const result = await propertyService.incrementViewCount(id, clientIP);
+      
+      res.status(200).json({
+        status: 'success',
+        message: result.message,
+        data: {
+          propertyId: id,
+          viewCount: result.viewCount,
+          counted: result.counted
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
   /**
    * Create new property
    * @route POST /api/properties

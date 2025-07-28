@@ -140,6 +140,7 @@ class PropertyRepository {
         images: true,
         features:true,
         listings: true,
+        zone: true, // เพิ่ม zone data
         highlights:{
           where: {
             active: true
@@ -1588,7 +1589,6 @@ class PropertyRepository {
             listings: true,
             propertyType: true,
             labels: true,
-            _count: { select: { views: true } },
           },
         });
         
@@ -1689,7 +1689,6 @@ class PropertyRepository {
             listings: true,
             propertyType: true,
             labels: true,
-            _count: { select: { views: true } },
           },
         });
         
@@ -1714,8 +1713,8 @@ class PropertyRepository {
 
     const processedProperties = properties.map(property => ({
       ...property,
-      viewCount: property._count?.views || 0,
-      inquiryCount: 0, // Placeholder
+      viewCount: property.viewCount || 0,
+      inquiryCount: property.interestedCount || 0,
       formattedDate: property.createdAt ? new Date(property.createdAt).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',

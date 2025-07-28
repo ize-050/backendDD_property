@@ -125,6 +125,8 @@ model Property {
   isPublished            Boolean             @default(true) @map("is_published")
   isFeatured             Boolean             @default(false) @map("is_featured")
   landSizeSqm            Float?              @map("land_size_sqm")
+  viewCount              Int?                 @default(0) @map("view_count")
+  interestedCount        Int?                 @default(0) @map("interested_count")
   floorPlans             FloorPlan[]
   contacts               Message[]
   propertyType           TypeProperty        @relation(fields: [propertyTypeId], references: [id])

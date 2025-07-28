@@ -1,5 +1,6 @@
 const messageRepository = require('../repositories/messageRepository');
 const emailService = require('./emailService');
+const propertyService = require('./propertyService');
 const { BadRequestError } = require('../utils/errors');
 
 class MessageService {
@@ -24,8 +25,17 @@ class MessageService {
       }
 
       const result = await messageRepository.createMessage(messageData);
-      
-      // ส่งอีเมลแจ้งเตือนไปยัง agent ของทรัพย์สิน
+    
+    // อัปเดต interested_count ของ property
+    try {
+      await propertyService.incrementInterestedCount(messageData.propertyId);
+      console.log(`Interested count incremented for property ID: ${messageData.propertyId}`);
+    } catch (countError) {
+      console.error('Failed to increment interested count:', countError);
+      // ไม่ throw error เพื่อไม่ให้การอัปเดต count ล้มเหลวส่งผลต่อการบันทึก message
+    }
+    
+    // ส่งอีเมลแจ้งเตือนไปยัง agent ของทรัพย์สิน
       try {
         const agentName = propertyWithAgent.user.name || 
                          `${propertyWithAgent.user.firstname || ''} ${propertyWithAgent.user.lastname || ''}`.trim() || 

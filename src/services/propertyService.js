@@ -682,6 +682,140 @@ class PropertyService {
       throw error;
     }
   }
+
+  /**
+   * Increment view count for a property with IP-based deduplication
+   * @param {string} propertyId - ID of the property
+   * @param {string} clientIP - Client IP address
+   * @returns {Promise<Object>} - Result with view count and whether it was counted
+   */
+  async incrementViewCount(propertyId, clientIP) {
+    try {
+      const propertyIdInt = parseInt(propertyId);
+      
+      // Check if property exists
+      const property = await prisma.property.findUnique({
+        where: { id: propertyIdInt },
+        select: { id: true, viewCount: true }
+      });
+      
+      if (!property) {
+        throw new ApiError(404, 'Property not found');
+      }
+
+      // Create a simple in-memory cache for IP tracking (expires after 1 hour)
+      // In production, you might want to use Redis or database table for this
+      if (!this.viewCache) {
+        this.viewCache = new Map();
+      }
+      
+      const cacheKey = `${propertyId}_${clientIP}`;
+      const now = Date.now();
+      const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
+      
+      // Check if this IP has viewed this property recently
+      const lastView = this.viewCache.get(cacheKey);
+      
+      if (lastView && (now - lastView) < oneHour) {
+        // Don't count this view, but return current count
+        return {
+          message: 'View already counted from this IP recently',
+          viewCount: property.viewCount,
+          counted: false
+        };
+      }
+      
+      // Clean up expired cache entries (simple cleanup)
+      if (this.viewCache.size > 1000) {
+        const expiredKeys = [];
+        for (const [key, timestamp] of this.viewCache.entries()) {
+          if (now - timestamp > oneHour) {
+            expiredKeys.push(key);
+          }
+        }
+        expiredKeys.forEach(key => this.viewCache.delete(key));
+      }
+      
+      // Update view count and cache
+      const updatedProperty = await prisma.property.update({
+        where: { id: propertyIdInt },
+        data: {
+          viewCount: {
+            increment: 1
+          },
+          updatedAt: new Date()
+        },
+        select: {
+          id: true,
+          viewCount: true
+        }
+      });
+      
+      // Cache this view
+      this.viewCache.set(cacheKey, now);
+      
+      return {
+        message: 'View count incremented successfully',
+        viewCount: updatedProperty.viewCount,
+        counted: true
+      };
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      console.error('Error incrementing view count:', error);
+      throw new ApiError(500, 'Error updating view count', false, error.stack);
+    }
+  }
+
+  // Increment interested count for property when enquiry is submitted
+  async incrementInterestedCount(propertyId) {
+    try {
+      const propertyIdInt = parseInt(propertyId);
+      
+      // ตรวจสอบว่า property มีอยู่จริง
+      const property = await prisma.property.findUnique({
+        where: { id: propertyIdInt },
+        select: { id: true, interestedCount: true }
+      });
+      
+      if (!property) {
+        throw new ApiError(404, 'Property not found');
+      }
+      
+      // อัปเดต interestedCount แบบ atomic
+      const updatedProperty = await prisma.property.update({
+        where: { id: propertyIdInt },
+        data: {
+          interestedCount: { increment: 1 },
+          updatedAt: new Date()
+        },
+        select: { id: true, interestedCount: true }
+      });
+      
+      return {
+        message: 'Interested count incremented successfully',
+        propertyId: propertyIdInt,
+        interestedCount: updatedProperty.interestedCount
+      };
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      console.error('Error incrementing interested count:', error);
+      throw new ApiError(500, 'Error updating interested count', false, error.stack);
+    }
+  }
+
+  // Cache cleanup function
+  cleanupViewCache() {
+    if (!this.viewCache) return;
+    
+    const now = Date.now();
+    const oneHour = 3600000; // 1 hour in milliseconds
+    
+    for (const [key, timestamp] of this.viewCache.entries()) {
+      if (now - timestamp > oneHour) {
+        this.viewCache.delete(key);
+      }
+    }
+  }
 }
 
 module.exports = new PropertyService();

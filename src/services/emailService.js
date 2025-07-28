@@ -202,7 +202,7 @@ class EmailService {
 
     const agentEmail = property.user?.email;
     const agentName = property.user?.name || 'Agent';
-    const property_code = property.property_code;
+    const property_code = property.propertyCode;
 
     if (!agentEmail) {
       throw new Error('Property owner email not found');

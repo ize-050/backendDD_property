@@ -27,6 +27,9 @@ router.get('/backoffice/my-properties', authMiddleware.authenticate, propertyCon
 router.get('/', propertyController.getAllProperties);
 router.get('/:id', propertyController.getPropertyById);
 
+// View tracking endpoint - no auth required for public viewing
+router.post('/:id/view', apiKeyAuth, propertyController.incrementViewCount);
+
 router.get('/backoffice/:id', propertyController.getPropertyByIdForAdmin);
 
 // Create property with form data and image upload
