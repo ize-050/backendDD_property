@@ -142,6 +142,10 @@ class ZoneService {
       if (bathrooms) {
         where.bathrooms = Number(bathrooms);
       }
+
+      where.deletedAt = null;
+
+      where.isPublished = true;
       
       // Get total count
       const total = await prisma.property.count({ where });

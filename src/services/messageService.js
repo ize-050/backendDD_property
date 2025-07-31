@@ -80,10 +80,11 @@ class MessageService {
 
     const role = await messageRepository.getRole(userId);
 
-    if(role === 'ADMIN') {
+
+    if(role?.role === 'ADMIN') {
       return messageRepository.getAllMessages(page, limit);
     }
-    if(role === 'USER') {
+    if(role?.role === 'USER') {
       return messageRepository.getMessagesByUserId(userId, page, limit);
     }
   }

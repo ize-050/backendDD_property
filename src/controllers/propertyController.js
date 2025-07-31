@@ -180,7 +180,7 @@ class PropertyController {
     try {
       // Validate request
       const userId = req.user.userId;
-      const errors = validationResult(req);
+      const errors = d(req);
       if (!errors.isEmpty()) {
         throw new ApiError(400, 'Validation error', true, null, errors.array());
       }
@@ -723,7 +723,7 @@ class PropertyController {
    */
   async getUserProperties(req, res, next) {
     try {
-      console.log("query", req.query)
+  
       const result = await propertyService.getUserProperties(req.user, req.query);
       res.status(200).json({
         status: 'success',

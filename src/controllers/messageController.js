@@ -45,7 +45,6 @@ class MessageController {
 
       const userId = req.user.userId;
 
-
       
       const result = await messageService.getAllMessages(page, limit, userId);
       

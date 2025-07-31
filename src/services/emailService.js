@@ -56,7 +56,7 @@ class EmailService {
     }
   }
 
-  async sendEmail({ to, subject, html, text, attachments = [] }) {
+  async sendEmail({ to, cc, bcc, subject, html, text, attachments = [] }) {
     try {
       if (!this.transporter) {
         throw new Error('Email transporter not initialized');
@@ -82,6 +82,14 @@ class EmailService {
         text,
         attachments: [...defaultAttachments, ...attachments]
       };
+
+      // เพิ่ม CC และ BCC ถ้ามี
+      if (cc) {
+        mailOptions.cc = cc;
+      }
+      if (bcc) {
+        mailOptions.bcc = bcc;
+      }
 
       const result = await this.transporter.sendMail(mailOptions);
       console.log('Email sent successfully:', result.messageId);
@@ -174,6 +182,7 @@ class EmailService {
     
     return await this.sendEmail({
       to: adminEmail,
+      cc: 'supakorn@d-luckproperty.com', // CC ไปที่ supakorn เสมอ
       subject: emailSubject,
       html,
       text: textVersion

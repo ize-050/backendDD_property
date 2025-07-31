@@ -62,14 +62,20 @@ class MessageRepository {
         include: {
           property: {
             select: {
+              id: true,
               projectName: true,
-              propertyType: true
-            }
+              propertyType: true,
+              district: true,
+              images: true
+            },
           }
         }
       }),
       prisma.message.count()
     ]);
+
+
+
 
     return {
       messages,
