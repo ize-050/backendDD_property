@@ -15,8 +15,19 @@ exports.getAllIcons = async (req, res) => {
     const Dataicon = [];
     for(let icon of icons) {
       const url = `${process.env.NEXT_PUBLIC_IMAGE_URL}/icons/${icon.iconPath}`;
-      icon.iconPath = url;
-        Dataicon.push(icon);
+      // Create new object with snake_case properties
+      const iconData = {
+        id: icon.id,
+        prefix: icon.prefix,
+        name: icon.name,
+        name_th: icon.nameTh,
+        name_ch: icon.nameCh,
+        name_ru: icon.nameRu,
+        key: icon.key,
+        iconPath: url,
+        sub_name: icon.sub_name
+      };
+      Dataicon.push(iconData);
     }
     // Group icons by prefix
 
@@ -67,6 +78,9 @@ exports.getIconsByPrefix = async (req, res) => {
         id: icons[i].id,
         prefix: icons[i].prefix,
         name: icons[i].name,
+        name_th: icons[i].nameTh,
+        name_ch: icons[i].nameCh,
+        name_ru: icons[i].nameRu,
         key: icons[i].key,
         iconPath: `${process.env.NEXT_PUBLIC_IMAGE_URL}${icons[i].iconPath}`,
         sub_name: icons[i].sub_name
@@ -105,9 +119,22 @@ exports.getIconById = async (req, res) => {
       });
     }
 
+    // Create new object with snake_case properties
+    const iconData = {
+      id: icon.id,
+      prefix: icon.prefix,
+      name: icon.name,
+      name_th: icon.nameTh,
+      name_ch: icon.nameCh,
+      name_ru: icon.nameRu,
+      key: icon.key,
+      iconPath: icon.iconPath,
+      sub_name: icon.sub_name
+    };
+
     res.status(200).json({
       success: true,
-      data: icon
+      data: iconData
     });
   } catch (error) {
     console.error('Error fetching icon:', error);

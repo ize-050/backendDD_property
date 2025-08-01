@@ -225,6 +225,30 @@ class PropertyRepository {
       property.contactInfo = property.contactInfo || {};
     }
 
+    // Transform Icon properties from camelCase to snake_case for multi-language support
+    const transformIconProperties = (items) => {
+      if (!items || !Array.isArray(items)) return items;
+      return items.map(item => {
+        if (item.Icon) {
+          item.Icon = {
+            ...item.Icon,
+            name_th: item.Icon.nameTh,
+            name_ch: item.Icon.nameCh,
+            name_ru: item.Icon.nameRu
+          };
+        }
+        return item;
+      });
+    };
+
+    // Apply transformation to all icon-related arrays
+    if (property.highlights) property.highlights = transformIconProperties(property.highlights);
+    if (property.facilities) property.facilities = transformIconProperties(property.facilities);
+    if (property.amenities) property.amenities = transformIconProperties(property.amenities);
+    if (property.views) property.views = transformIconProperties(property.views);
+    if (property.nearbyPlaces) property.nearbyPlaces = transformIconProperties(property.nearbyPlaces);
+    if (property.labels) property.labels = transformIconProperties(property.labels);
+
     // Ensure Co-Agent fields are included in response
     property.coAgentAccept = property.coAgentAccept || false;
     property.commissionType = property.commissionType || null;
@@ -303,6 +327,30 @@ class PropertyRepository {
     if (!property) {
       return null;
     }
+
+    // Transform Icon properties from camelCase to snake_case for multi-language support
+    const transformIconProperties = (items) => {
+      if (!items || !Array.isArray(items)) return items;
+      return items.map(item => {
+        if (item.Icon) {
+          item.Icon = {
+            ...item.Icon,
+            name_th: item.Icon.nameTh,
+            name_ch: item.Icon.nameCh,
+            name_ru: item.Icon.nameRu
+          };
+        }
+        return item;
+      });
+    };
+
+    // Apply transformation to all icon-related arrays
+    if (property.highlights) property.highlights = transformIconProperties(property.highlights);
+    if (property.facilities) property.facilities = transformIconProperties(property.facilities);
+    if (property.amenities) property.amenities = transformIconProperties(property.amenities);
+    if (property.views) property.views = transformIconProperties(property.views);
+    if (property.nearbyPlaces) property.nearbyPlaces = transformIconProperties(property.nearbyPlaces);
+    if (property.labels) property.labels = transformIconProperties(property.labels);
 
     // Ensure Co-Agent fields are included in response
     property.coAgentAccept = property.coAgentAccept || false;

@@ -225,6 +225,9 @@ model Icon {
   id         Int                 @id @default(autoincrement())
   prefix     String
   name       String?
+  nameTh     String?             @map("name_th")  // ชื่อไอคอนภาษาไทย
+  nameCh     String?             @map("name_ch")  // ชื่อไอคอนภาษาจีน
+  nameRu     String?             @map("name_ru")  // ชื่อไอคอนภาษารัสเซีย
   active     Boolean             @default(true)
   createdAt  DateTime            @default(now()) @map("created_at")
   updatedAt  DateTime            @updatedAt @map("updated_at")
