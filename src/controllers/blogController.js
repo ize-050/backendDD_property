@@ -58,6 +58,7 @@ class BlogController {
    */
   async getBlogBySlug(req, res, next) {
     try {
+      console.log('Fetching blog with slug:', req.params.slug);
       const blog = await blogService.getBlogBySlug(req.params.slug);
 
       res.status(200).json({
